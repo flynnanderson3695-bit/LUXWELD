@@ -1,0 +1,84 @@
+<%- include('partials/head', { title: 'Production — ' + product.serial }) %>
+<%
+  const labels = { front: 'Front angle', back: 'Back angle', left: 'Left side angle', right: 'Right side angle' };
+%>
+<div class="max-w-md mx-auto">
+  <div class="mb-4">
+    <p class="text-xs uppercase tracking-[0.2em] text-gold-400">Production registration</p>
+    <h1 class="text-xl font-semibold font-mono text-zinc-100"><%= product.serial %></h1>
+  </div>
+
+  <% if (error) { %>
+    <div class="mb-4 text-sm bg-red-500/10 text-red-300 ring-1 ring-red-500/30 rounded-lg px-3 py-2"><%= error %></div>
+  <% } %>
+
+  <form method="post" action="/p/<%= product.serial %>/production" enctype="multipart/form-data" class="card space-y-5">
+
+    <!-- Auto-filled context -->
+    <div class="grid grid-cols-2 gap-3 text-sm">
+      <div class="bg-ink-900 border border-ink-600 rounded-xl px-3 py-2.5">
+        <p class="text-zinc-500 text-xs">Production date</p>
+        <p class="text-zinc-100"><%= today %> <span class="text-zinc-500">(today)</span></p>
+      </div>
+      <div class="bg-ink-900 border border-ink-600 rounded-xl px-3 py-2.5">
+        <p class="text-zinc-500 text-xs">Registered by</p>
+        <p class="text-zinc-100"><%= userName %></p>
+      </div>
+    </div>
+
+    <div>
+      <label class="label">Product tag <span class="text-gold-400">*</span></label>
+      <select name="product_tag" id="product_tag" required class="input" onchange="toggleCustom()">
+        <option value="">— select —</option>
+        <% tags.forEach(t => { %>
+          <option value="<%= t %>" <%= values.product_tag===t?'selected':'' %>><%= t %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div id="custom_wrap" class="<%= values.product_tag==='Custom' ? '' : 'hidden' %>">
+      <label class="label">Custom product description <span class="text-gold-400">*</span></label>
+      <input name="custom_description" value="<%= values.custom_description || '' %>" class="input" placeholder="Describe the custom flashing" />
+    </div>
+
+    <div>
+      <label class="label">Production notes</label>
+      <textarea name="notes" rows="2" class="input"><%= values.notes || '' %></textarea>
+    </div>
+
+    <!-- Photos -->
+    <div>
+      <h2 class="font-semibold text-zinc-200">Insurance photos <span class="text-gold-400">*</span></h2>
+      <p class="text-xs text-zinc-500 mb-3">All 4 angles of the finished flashing are required before shipping.</p>
+      <div class="grid grid-cols-2 gap-3">
+        <% angles.forEach(a => { %>
+          <label class="photo-tile">
+            <span class="text-sm font-medium text-zinc-200"><%= labels[a] %></span>
+            <span class="text-xs text-zinc-500 mt-0.5">Tap to capture</span>
+            <input type="file" name="<%= a %>" accept="image/*" capture="environment" required
+                   class="mt-2 w-full text-xs text-zinc-400 file:hidden" onchange="markDone(this)" />
+            <span class="done text-xs text-emerald-400 mt-1 hidden">✓ Photo added</span>
+          </label>
+        <% }) %>
+      </div>
+    </div>
+
+    <button class="btn-gold w-full text-base py-4">Complete production registration</button>
+  </form>
+</div>
+<script>
+  function toggleCustom(){
+    var sel=document.getElementById('product_tag');
+    var wrap=document.getElementById('custom_wrap');
+    var inp=wrap.querySelector('input');
+    var on = sel.value==='Custom';
+    wrap.classList.toggle('hidden', !on);
+    inp.required = on;
+  }
+  function markDone(input){
+    var done=input.parentElement.querySelector('.done');
+    if(done) done.classList.toggle('hidden', !(input.files && input.files.length));
+  }
+  toggleCustom();
+</script>
+<%- include('partials/foot') %>

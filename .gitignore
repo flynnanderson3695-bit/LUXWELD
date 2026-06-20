@@ -1,0 +1,17 @@
+node_modules/
+data/
+data.backup-*/
+.env
+.env.*
+!.env.example
+*.log
+
+# Local Claude Code settings (keep personal config out of the repo)
+.claude/settings.local.json
+
+# Capacitor wrapper build output (generated locally)
+mobile/node_modules/
+mobile/android/
+mobile/ios/
+mobile/package-lock.json
+mobile/package.json

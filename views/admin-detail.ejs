@@ -1,0 +1,161 @@
+<%- include('partials/head', { title: 'Record ' + product.serial }) %>
+<div class="max-w-3xl mx-auto">
+  <a href="/admin" class="text-sm text-gold-300">← Back to dashboard</a>
+
+  <% if (saved) { %>
+    <div class="mt-3 mb-2 text-sm bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30 rounded-lg px-3 py-2">Saved.</div>
+  <% } %>
+
+  <div class="flex items-center justify-between my-3">
+    <h1 class="text-2xl font-semibold font-mono text-zinc-100"><%= product.serial %></h1>
+    <span class="badge <%= statusBadgeClass(status) %>"><%= status %></span>
+  </div>
+
+  <div class="grid sm:grid-cols-2 gap-4">
+    <!-- QR -->
+    <div class="card text-center">
+      <img src="/qr/<%= product.serial %>.png" class="w-40 mx-auto bg-white p-2 rounded-lg" alt="QR" />
+      <p class="text-xs text-zinc-500 break-all mt-2"><%= baseUrl %>/p/<%= product.serial %></p>
+      <p class="text-sm mt-2 text-zinc-300">Warranty length: <strong class="text-gold-300"><%= product.warranty_years %> yrs</strong></p>
+    </div>
+
+    <!-- Warranty -->
+    <div class="card">
+      <h2 class="font-semibold text-zinc-200 mb-2">Warranty</h2>
+      <% if (warranty) { %>
+        <p class="text-sm text-zinc-400"><span class="text-zinc-500">Start:</span> <%= warranty.start_date %></p>
+        <p class="text-sm text-zinc-400"><span class="text-zinc-500">End:</span> <%= warranty.end_date %></p>
+        <p class="text-sm text-zinc-400"><span class="text-zinc-500">Status:</span> <%= status %></p>
+      <% } else { %>
+        <p class="text-sm text-zinc-500">Not active yet (<%= status %>).</p>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Production details -->
+  <div class="card mt-4">
+    <h2 class="font-semibold text-zinc-200 mb-3">Production</h2>
+    <% if (production) { %>
+      <div class="grid sm:grid-cols-2 gap-2 text-sm text-zinc-400">
+        <p><span class="text-zinc-500">Tag:</span> <%= production.product_tag || '—' %></p>
+        <% if (production.product_tag === 'Custom') { %>
+          <p><span class="text-zinc-500">Custom:</span> <%= production.custom_description || '—' %></p>
+        <% } %>
+        <p><span class="text-zinc-500">Production date:</span> <%= production.production_date %></p>
+        <p><span class="text-zinc-500">Production user:</span> <%= production.team_member_name || '—' %></p>
+        <p class="sm:col-span-2"><span class="text-zinc-500">Notes:</span> <%= production.notes || '—' %></p>
+      </div>
+      <% if (productionPhotos && productionPhotos.length) { %>
+        <h3 class="text-sm font-medium text-zinc-400 mt-4 mb-2">Production photos (insurance)</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <% productionPhotos.forEach(p => { %>
+            <a href="/uploads/<%= p.file_path %>" target="_blank" class="block">
+              <img src="/uploads/<%= p.file_path %>" class="rounded-lg border border-ink-600 aspect-square object-cover w-full" alt="<%= p.angle %>" />
+              <p class="text-xs text-center text-zinc-500 mt-1"><%= p.angle %></p>
+            </a>
+          <% }) %>
+        </div>
+      <% } %>
+    <% } else { %>
+      <p class="text-sm text-zinc-500">Not registered by production yet.</p>
+    <% } %>
+  </div>
+
+  <!-- Installation details -->
+  <div class="card mt-4">
+    <h2 class="font-semibold text-zinc-200 mb-3">Installation</h2>
+    <% if (installation) { %>
+      <div class="grid sm:grid-cols-2 gap-2 text-sm text-zinc-400">
+        <p><span class="text-zinc-500">Installer:</span> <%= installation.installer_name %></p>
+        <p><span class="text-zinc-500">Company:</span> <%= installation.installer_company %></p>
+        <p><span class="text-zinc-500">Phone:</span> <%= installation.installer_phone %></p>
+        <p><span class="text-zinc-500">Email:</span> <%= installation.installer_email %></p>
+        <p><span class="text-zinc-500">Site:</span> <%= installation.site_name %></p>
+        <p><span class="text-zinc-500">Install date:</span> <%= installation.installation_date %></p>
+        <p><span class="text-zinc-500">Submitted via:</span>
+          <span class="badge bg-ink-700 text-zinc-300 ring-1 ring-ink-600 uppercase"><%= installation.source || 'web' %></span></p>
+        <p class="sm:col-span-2"><span class="text-zinc-500">Address:</span> <%= installation.site_address %></p>
+        <p class="sm:col-span-2"><span class="text-zinc-500">Notes:</span> <%= installation.notes || '—' %></p>
+      </div>
+      <% if (installationPhotos && installationPhotos.length) { %>
+        <h3 class="text-sm font-medium text-zinc-400 mt-4 mb-2">Installation photos</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <% installationPhotos.forEach(p => { %>
+            <a href="/uploads/<%= p.file_path %>" target="_blank" class="block">
+              <img src="/uploads/<%= p.file_path %>" class="rounded-lg border border-ink-600 aspect-square object-cover w-full" alt="<%= p.angle %>" />
+              <p class="text-xs text-center text-zinc-500 mt-1"><%= p.angle %></p>
+            </a>
+          <% }) %>
+        </div>
+      <% } %>
+      <form method="post" action="/admin/products/<%= product.serial %>/reset-installation" class="mt-4"
+            onsubmit="return confirm('Reset this installation? Installer details, photos and the warranty record will be removed so it can be re-registered.');">
+        <button class="btn-ghost !py-2 !px-4 text-sm hover:!text-red-300 hover:!border-red-500">Reset installation (admin override)</button>
+      </form>
+    <% } else { %>
+      <p class="text-sm text-zinc-500">Not installed yet.</p>
+    <% } %>
+  </div>
+
+  <!-- Edit form -->
+  <form method="post" action="/admin/products/<%= product.serial %>/edit" class="card mt-4 space-y-4">
+    <h2 class="font-semibold text-zinc-200">Correct record</h2>
+
+    <div>
+      <label class="label">Warranty length (years)</label>
+      <input type="number" name="warranty_years" min="1" value="<%= product.warranty_years %>" class="input w-40" />
+    </div>
+
+    <% if (production) { %>
+      <fieldset class="border-t border-ink-600 pt-3">
+        <legend class="text-sm font-medium text-zinc-400 mb-2">Production</legend>
+        <div class="grid sm:grid-cols-2 gap-3 text-sm">
+          <label class="text-zinc-400">Tag
+            <select name="product_tag" class="input mt-1">
+              <% tags.forEach(t => { %><option value="<%= t %>" <%= production.product_tag===t?'selected':'' %>><%= t %></option><% }) %>
+            </select>
+          </label>
+          <label class="text-zinc-400">Custom description<input name="custom_description" value="<%= production.custom_description || '' %>" class="input mt-1" /></label>
+          <label class="text-zinc-400">Production date<input type="date" name="production_date" value="<%= production.production_date %>" class="input mt-1" /></label>
+          <label class="text-zinc-400">Production user<input name="team_member_name" value="<%= production.team_member_name || '' %>" class="input mt-1" /></label>
+          <label class="text-zinc-400 sm:col-span-2">Notes<input name="notes_prod" value="<%= production.notes || '' %>" class="input mt-1" /></label>
+        </div>
+      </fieldset>
+    <% } %>
+
+    <% if (installation) { %>
+      <fieldset class="border-t border-ink-600 pt-3">
+        <legend class="text-sm font-medium text-zinc-400 mb-2">Installation</legend>
+        <div class="grid sm:grid-cols-2 gap-3 text-sm">
+          <label class="text-zinc-400">Installer name<input name="installer_name" value="<%= installation.installer_name %>" class="input mt-1" /></label>
+          <label class="text-zinc-400">Company<input name="installer_company" value="<%= installation.installer_company %>" class="input mt-1" /></label>
+          <label class="text-zinc-400">Phone<input name="installer_phone" value="<%= installation.installer_phone %>" class="input mt-1" /></label>
+          <label class="text-zinc-400">Email<input name="installer_email" value="<%= installation.installer_email %>" class="input mt-1" /></label>
+          <label class="text-zinc-400">Site name<input name="site_name" value="<%= installation.site_name %>" class="input mt-1" /></label>
+          <label class="text-zinc-400">Install date<input type="date" name="installation_date" value="<%= installation.installation_date %>" class="input mt-1" /></label>
+          <label class="text-zinc-400 sm:col-span-2">Site address<input name="site_address" value="<%= installation.site_address %>" class="input mt-1" /></label>
+          <label class="text-zinc-400 sm:col-span-2">Notes<input name="notes_inst" value="<%= installation.notes || '' %>" class="input mt-1" /></label>
+        </div>
+      </fieldset>
+    <% } %>
+
+    <button class="btn-gold !py-2.5">Save changes</button>
+  </form>
+
+  <!-- Cancel / restore -->
+  <form method="post" action="/admin/products/<%= product.serial %>/cancel" class="card mt-4">
+    <% if (product.status === 'CANCELLED') { %>
+      <input type="hidden" name="action" value="restore" />
+      <p class="text-sm text-zinc-400 mb-2">This unit is cancelled<%= product.cancelled_reason ? ' — ' + product.cancelled_reason : '' %>.</p>
+      <button class="btn !py-2 !px-4 text-sm bg-emerald-600 text-white hover:bg-emerald-500">Restore unit</button>
+    <% } else { %>
+      <div class="flex flex-col sm:flex-row gap-2 sm:items-end">
+        <label class="text-sm text-zinc-400 flex-1">Reason (damaged, cancelled, not installed…)
+          <input name="reason" class="input mt-1" />
+        </label>
+        <button class="btn-danger !py-2.5 !px-4 text-sm">Cancel this unit</button>
+      </div>
+    <% } %>
+  </form>
+</div>
+<%- include('partials/foot') %>

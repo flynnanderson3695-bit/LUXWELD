@@ -1,0 +1,136 @@
+<%- include('partials/head', { title: 'Install — ' + product.serial }) %>
+<%
+  const labels = { front: 'Front angle', back: 'Back angle', left: 'Left side angle', right: 'Right side angle' };
+  const tagText = production ? (production.product_tag === 'Custom' ? production.custom_description : production.product_tag) : '';
+%>
+<div class="max-w-md mx-auto">
+  <div class="mb-4">
+    <p class="text-xs uppercase tracking-[0.2em] text-gold-400">Installation &amp; warranty</p>
+    <h1 class="text-xl font-semibold font-mono text-zinc-100"><%= product.serial %></h1>
+    <% if (tagText) { %><p class="text-sm text-zinc-500"><%= tagText %></p><% } %>
+  </div>
+
+  <% if (error) { %>
+    <div class="mb-4 text-sm bg-red-500/10 text-red-300 ring-1 ring-red-500/30 rounded-lg px-3 py-2"><%= error %></div>
+  <% } %>
+
+  <form method="post" action="/p/<%= product.serial %>/install" enctype="multipart/form-data" class="card space-y-4" id="installForm">
+    <input type="hidden" name="source" id="source" value="web" />
+
+    <h2 class="font-semibold text-zinc-200">Installer details</h2>
+    <div>
+      <label class="label">Installer name <span class="text-gold-400">*</span></label>
+      <input name="installer_name" required value="<%= values.installer_name || '' %>" class="input" />
+    </div>
+    <div>
+      <label class="label">Installer company <span class="text-gold-400">*</span></label>
+      <input name="installer_company" required value="<%= values.installer_company || '' %>" class="input" />
+    </div>
+    <div>
+      <label class="label">Phone <span class="text-gold-400">*</span></label>
+      <input name="installer_phone" type="tel" required value="<%= values.installer_phone || '' %>" class="input" />
+    </div>
+    <div>
+      <label class="label">Email <span class="text-gold-400">*</span></label>
+      <input name="installer_email" type="email" required value="<%= values.installer_email || '' %>" class="input" />
+    </div>
+
+    <!-- Remember my details (this device only) -->
+    <label class="flex items-start gap-3 bg-ink-900 border border-ink-600 rounded-xl px-3.5 py-3 cursor-pointer">
+      <input type="checkbox" id="rememberMe" class="mt-0.5 w-5 h-5 accent-gold-500" />
+      <span class="text-sm">
+        <span class="text-zinc-200">Remember my details on this device</span>
+        <span class="block text-xs text-zinc-500 mt-0.5">Saves only your name, company, phone &amp; email in this browser to autofill next time. No site, address or photos are saved. Clear anytime by unticking.</span>
+      </span>
+    </label>
+
+    <!-- Optional companion app callout -->
+    <div class="flex items-center justify-between gap-3 bg-gold-500/5 border border-gold-500/30 rounded-xl px-3.5 py-3">
+      <p class="text-xs text-zinc-400">Install often? Get the LUXWELD app to save your details and autofill future warranty registrations.</p>
+      <a href="/app" class="btn-ghost !py-2 !px-3 text-xs shrink-0">Get the app</a>
+    </div>
+
+    <h2 class="font-semibold text-zinc-200 pt-2">Installation site</h2>
+    <div>
+      <label class="label">Site name <span class="text-gold-400">*</span></label>
+      <input name="site_name" required value="<%= values.site_name || '' %>" class="input" />
+    </div>
+    <div>
+      <label class="label">Site address <span class="text-gold-400">*</span></label>
+      <textarea name="site_address" rows="2" required class="input"><%= values.site_address || '' %></textarea>
+    </div>
+    <div>
+      <label class="label">Installation date <span class="text-gold-400">*</span></label>
+      <input type="date" name="installation_date" required value="<%= values.installation_date || today %>" class="input" />
+    </div>
+    <div>
+      <label class="label">Notes / comments</label>
+      <textarea name="notes" rows="2" class="input"><%= values.notes || '' %></textarea>
+    </div>
+
+    <h2 class="font-semibold text-zinc-200 pt-2">Installed photos <span class="text-gold-400">*</span></h2>
+    <p class="text-xs text-zinc-500 -mt-2">All 4 angles of the installed flashing are required.</p>
+    <div class="grid grid-cols-2 gap-3">
+      <% angles.forEach(a => { %>
+        <label class="photo-tile">
+          <span class="text-sm font-medium text-zinc-200"><%= labels[a] %></span>
+          <span class="text-xs text-zinc-500 mt-0.5">Tap to capture</span>
+          <input type="file" name="<%= a %>" accept="image/*" capture="environment" required
+                 class="mt-2 w-full text-xs text-zinc-400 file:hidden" onchange="markDone(this)" />
+          <span class="done text-xs text-emerald-400 mt-1 hidden">✓ Photo added</span>
+        </label>
+      <% }) %>
+    </div>
+
+    <button class="btn-gold w-full text-base py-4">Submit &amp; activate warranty</button>
+  </form>
+</div>
+<script>
+  function markDone(input){
+    var done=input.parentElement.querySelector('.done');
+    if(done) done.classList.toggle('hidden', !(input.files && input.files.length));
+  }
+
+  // --- Submission source: app (Capacitor) > installed PWA > web ---
+  (function(){
+    var el=document.getElementById('source'); if(!el) return;
+    try {
+      if (window.Capacitor && typeof Capacitor.getPlatform === 'function') {
+        var p = Capacitor.getPlatform();
+        el.value = (p === 'ios') ? 'ios' : (p === 'android') ? 'android' : 'pwa';
+      } else if ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone) {
+        el.value = 'pwa';
+      }
+    } catch(e){}
+  })();
+
+  // --- "Remember my details" via localStorage (name/company/phone/email only) ---
+  (function(){
+    var KEY='luxweld_installer';
+    var fields=['installer_name','installer_company','installer_phone','installer_email'];
+    var cb=document.getElementById('rememberMe');
+    var form=document.getElementById('installForm');
+    function get(n){ return form.querySelector('[name="'+n+'"]'); }
+    // Autofill if saved and field is empty (don't clobber server-rendered values).
+    try {
+      var saved=JSON.parse(localStorage.getItem(KEY)||'null');
+      if(saved){
+        if(cb) cb.checked=true;
+        fields.forEach(function(f){ var i=get(f); if(i && !i.value && saved[f]) i.value=saved[f]; });
+      }
+    } catch(e){}
+    if(form){
+      form.addEventListener('submit', function(){
+        try {
+          if(cb && cb.checked){
+            var data={}; fields.forEach(function(f){ var i=get(f); data[f]=i?i.value:''; });
+            localStorage.setItem(KEY, JSON.stringify(data));
+          } else {
+            localStorage.removeItem(KEY);
+          }
+        } catch(e){}
+      });
+    }
+  })();
+</script>
+<%- include('partials/foot') %>

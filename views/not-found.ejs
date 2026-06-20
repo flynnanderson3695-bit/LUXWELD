@@ -1,0 +1,12 @@
+<%- include('partials/head', { title: 'Not found' }) %>
+<div class="max-w-md mx-auto text-center mt-12">
+  <p class="text-5xl mb-3">🔍</p>
+  <h1 class="text-xl font-semibold text-zinc-100 mb-2">Product not found</h1>
+  <% if (serial) { %>
+    <p class="text-zinc-500">No product matches serial <span class="font-mono text-zinc-300"><%= serial %></span>.</p>
+  <% } else { %>
+    <p class="text-zinc-500">That page doesn't exist.</p>
+  <% } %>
+  <a href="/" class="inline-block mt-4 text-gold-300">Go home →</a>
+</div>
+<%- include('partials/foot') %>

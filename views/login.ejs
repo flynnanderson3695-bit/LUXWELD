@@ -1,0 +1,40 @@
+<%- include('partials/head', { title: 'Login' }) %>
+<div class="max-w-sm mx-auto mt-6 sm:mt-10">
+  <div class="text-center mb-6">
+    <% if (typeof hasLogo !== 'undefined' && hasLogo) { %>
+      <img src="/luxweld-velux-trusted.svg" alt="LUXWELD" class="h-12 mx-auto mb-3" />
+    <% } else { %>
+      <div class="inline-grid place-items-center w-14 h-14 rounded-2xl bg-gradient-to-b from-gold-400 to-gold-600 text-ink-900 text-2xl font-black mx-auto mb-3">L</div>
+      <h1 class="tracking-[0.3em] text-gold-300 font-semibold">LUXWELD</h1>
+    <% } %>
+    <p class="text-sm text-zinc-500 mt-1">Warranty &amp; insurance registration</p>
+  </div>
+
+  <div class="card">
+    <h2 class="text-lg font-semibold text-zinc-100 mb-1">Staff sign in</h2>
+    <p class="text-sm text-zinc-500 mb-4">Installers don't sign in — they scan the product QR code.</p>
+
+    <% if (error) { %>
+      <div class="mb-4 text-sm bg-red-500/10 text-red-300 ring-1 ring-red-500/30 rounded-lg px-3 py-2"><%= error %></div>
+    <% } %>
+
+    <form method="post" action="/login" class="space-y-4">
+      <input type="hidden" name="next" value="<%= next %>" />
+      <div>
+        <label class="label">Username</label>
+        <input name="username" value="<%= username %>" autofocus required autocapitalize="none" autocomplete="username" class="input" />
+      </div>
+      <div>
+        <label class="label">Password</label>
+        <input type="password" name="password" required autocomplete="current-password" class="input" />
+      </div>
+      <button class="btn-gold w-full">Sign in</button>
+    </form>
+  </div>
+
+  <p class="text-center text-xs text-zinc-600 mt-4">
+    Demo accounts: <span class="text-zinc-400">admin / admin123</span> ·
+    <span class="text-zinc-400">mike / mike123</span>
+  </p>
+</div>
+<%- include('partials/foot') %>

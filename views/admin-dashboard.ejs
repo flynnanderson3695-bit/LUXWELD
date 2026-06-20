@@ -1,0 +1,68 @@
+<%- include('partials/head', { title: 'Dashboard' }) %>
+<div class="flex items-center justify-between mb-4 gap-3">
+  <h1 class="text-2xl font-semibold text-zinc-100">Warranty records</h1>
+  <a href="/admin/generate" class="btn-gold !py-2.5 !px-4 text-sm">+ Generate QR</a>
+</div>
+
+<form method="get" action="/admin" class="mb-3">
+  <div class="flex gap-2">
+    <input name="q" value="<%= q %>" placeholder="Search serial, installer, site, address, tag, status…" class="input flex-1" />
+    <input type="hidden" name="filter" value="<%= filter %>" />
+    <button class="btn-ghost !px-5">Search</button>
+  </div>
+</form>
+
+<%
+  const filters = [
+    ['', 'All'], ['created', 'QR created'], ['manufactured', 'Ready to install'],
+    ['installed', 'Installed'], ['active', 'Warranty active'], ['expired', 'Warranty expired'],
+    ['incomplete', 'Incomplete'], ['cancelled', 'Cancelled'],
+  ];
+%>
+<div class="flex flex-wrap gap-2 mb-4 text-sm">
+  <% filters.forEach(([val,label]) => { %>
+    <a href="/admin?filter=<%= val %><%= q ? '&q='+encodeURIComponent(q) : '' %>"
+       class="px-3 py-1.5 rounded-full border <%= filter===val ? 'bg-gold-500 text-ink-900 border-gold-500 font-medium' : 'border-ink-600 text-zinc-400 hover:border-gold-500 hover:text-gold-300' %>">
+      <%= label %>
+    </a>
+  <% }) %>
+</div>
+
+<div class="flex items-center justify-between mb-2 text-sm text-zinc-500">
+  <span><%= rows.length %> record<%= rows.length===1?'':'s' %></span>
+  <a href="/admin/export.csv?filter=<%= filter %><%= q ? '&q='+encodeURIComponent(q) : '' %>" class="text-gold-300 hover:underline">⬇ Export CSV</a>
+</div>
+
+<div class="card !p-0 overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="text-zinc-500 text-left border-b border-ink-600">
+      <tr>
+        <th class="px-4 py-3 font-medium">Serial</th>
+        <th class="px-4 py-3 font-medium">Status</th>
+        <th class="px-4 py-3 font-medium">Tag</th>
+        <th class="px-4 py-3 font-medium">Installer</th>
+        <th class="px-4 py-3 font-medium">Site</th>
+        <th class="px-4 py-3 font-medium">Warranty end</th>
+        <th class="px-4 py-3"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-ink-700">
+      <% if (rows.length === 0) { %>
+        <tr><td colspan="7" class="px-4 py-10 text-center text-zinc-600">No products found.</td></tr>
+      <% } %>
+      <% rows.forEach(r => {
+           const tagText = r.product_tag === 'Custom' ? (r.custom_description || 'Custom') : (r.product_tag || '—'); %>
+        <tr class="hover:bg-ink-700/40">
+          <td class="px-4 py-3 font-mono text-zinc-100"><%= r.serial %></td>
+          <td class="px-4 py-3"><span class="badge <%= statusBadgeClass(r.status) %>"><%= r.status %></span></td>
+          <td class="px-4 py-3 text-zinc-300"><%= tagText %></td>
+          <td class="px-4 py-3 text-zinc-300"><%= r.installer_name || '—' %></td>
+          <td class="px-4 py-3 text-zinc-300"><%= r.site_name || '—' %></td>
+          <td class="px-4 py-3 text-zinc-300"><%= r.warranty_end || '—' %></td>
+          <td class="px-4 py-3 text-right"><a href="/admin/products/<%= r.serial %>" class="text-gold-300 hover:underline">View</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<%- include('partials/foot') %>

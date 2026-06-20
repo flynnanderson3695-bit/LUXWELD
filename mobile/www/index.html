@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <title>LUXWELD Warranty</title>
+  <style>
+    :root { --ink:#0b0b0d; --surface:#141417; --border:#2c2c34; --gold:#dcc06a; --gold2:#c8a13e; --muted:#9a9aa2; }
+    * { box-sizing: border-box; }
+    html,body { margin:0; min-height:100%; background:var(--ink); color:#e7e7ea;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    .wrap { min-height:100vh; display:flex; flex-direction:column; align-items:center;
+      justify-content:center; text-align:center; padding:24px; gap:6px; }
+    .logo { width:64px;height:64px;border-radius:16px;display:grid;place-items:center;
+      font-weight:900;font-size:30px;color:var(--ink);
+      background:linear-gradient(180deg,var(--gold),var(--gold2));margin-bottom:6px; }
+    h1 { letter-spacing:.28em; color:var(--gold); font-size:15px; margin:0; }
+    .tag { color:var(--muted); font-size:13px; margin:0 0 14px; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:18px;
+      padding:20px; max-width:420px; width:100%; text-align:left; }
+    .card h2 { font-size:16px; margin:0 0 8px; color:#fff; }
+    .card p { font-size:14px; color:var(--muted); margin:0 0 10px; line-height:1.5; }
+    code { background:#000; color:var(--gold); padding:2px 6px; border-radius:6px; font-size:13px; word-break:break-all; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      width:100%; border:0; border-radius:12px; padding:14px; font-size:15px; font-weight:700;
+      cursor:pointer; margin-top:10px; }
+    .btn-gold { background:linear-gradient(180deg,var(--gold),var(--gold2)); color:var(--ink); }
+    .btn-ghost { background:transparent; color:#e7e7ea; border:1px solid var(--border); }
+    .spinner { width:26px;height:26px;border-radius:50%;border:3px solid var(--border);
+      border-top-color:var(--gold); animation:spin 0.9s linear infinite; margin:14px auto; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .hidden { display:none !important; }
+    .dev { margin-top:16px; padding-top:14px; border-top:1px solid var(--border); }
+    .dev label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.12em; }
+    .dev input { width:100%; margin-top:8px; padding:12px; font-size:15px; border-radius:10px;
+      border:1px solid var(--border); background:#000; color:#fff; }
+    .err { color:#ff9b9b; font-size:13px; }
+    .small { font-size:12px; color:#6b6b73; margin-top:14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="logo">L</div>
+    <h1>LUXWELD WARRANTY</h1>
+    <p class="tag">Companion app</p>
+
+    <!-- Loading state -->
+    <div id="loading" class="card" style="text-align:center">
+      <div class="spinner"></div>
+      <p id="loadingText" style="margin:0">Connecting…</p>
+    </div>
+
+    <!-- Setup / error state -->
+    <div id="setup" class="card hidden">
+      <h2 id="setupTitle">Set your deployed app URL</h2>
+      <p id="setupMsg">Set your deployed app URL before building the mobile app.</p>
+      <p>Edit <code>mobile/www/app-config.js</code> and set:</p>
+      <p><code>window.LUXWELD_APP_URL = "https://warranty.luxweld.com.au";</code></p>
+      <p>…or run <code>LUXWELD_APP_URL=https://… npm run set-app-url</code> in the project root, then rebuild.</p>
+
+      <button id="retryBtn" class="btn btn-gold">Retry</button>
+
+      <div class="dev">
+        <label>Development only — open a test URL</label>
+        <input id="devUrl" type="url" inputmode="url" autocapitalize="off" autocorrect="off"
+               placeholder="https://abc123.ngrok.io  or  http://192.168.1.50:3000" />
+        <button id="devOpenBtn" class="btn btn-ghost">Open development URL</button>
+        <p class="small">localhost will NOT work from a phone — use a LAN IP (http://192.168.x.x:3000) or an HTTPS tunnel (ngrok / cloudflared). Production builds should use your real HTTPS domain.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="app-config.js"></script>
+  <script>
+    (function () {
+      var loading = document.getElementById('loading');
+      var loadingText = document.getElementById('loadingText');
+      var setup = document.getElementById('setup');
+      var setupTitle = document.getElementById('setupTitle');
+      var setupMsg = document.getElementById('setupMsg');
+      var devUrl = document.getElementById('devUrl');
+      var DEV_KEY = 'luxweld_dev_url';
+
+      function show(el) { loading.classList.add('hidden'); setup.classList.add('hidden'); el.classList.remove('hidden'); }
+
+      function configured(url) {
+        return typeof url === 'string' && /^https:\/\/\S+/i.test(url) && !/YOUR_DEPLOYED_DOMAIN/i.test(url);
+      }
+
+      function go(url) { window.location.replace(url); }
+
+      // Reachability probe (opaque ok). Resolves false on timeout/network error.
+      function reachable(url) {
+        return new Promise(function (resolve) {
+          var done = false;
+          var t = setTimeout(function () { if (!done) { done = true; resolve(false); } }, 8000);
+          fetch(url.replace(/\/+$/, '') + '/health', { mode: 'no-cors', cache: 'no-store' })
+            .then(function () { if (!done) { done = true; clearTimeout(t); resolve(true); } })
+            .catch(function () { if (!done) { done = true; clearTimeout(t); resolve(false); } });
+        });
+      }
+
+      function showSetup(title, msg) {
+        if (title) setupTitle.textContent = title;
+        if (msg) { setupMsg.innerHTML = ''; setupMsg.textContent = msg; }
+        try { var d = localStorage.getItem(DEV_KEY); if (d) devUrl.value = d; } catch (e) {}
+        show(setup);
+      }
+
+      function attemptConnect() {
+        var url = window.LUXWELD_APP_URL;
+        if (!configured(url)) {
+          showSetup('Set your deployed app URL',
+            'Set your deployed app URL before building the mobile app.');
+          return;
+        }
+        show(loading);
+        loadingText.textContent = 'Connecting to the LUXWELD app…';
+        reachable(url).then(function (ok) {
+          if (ok) { go(url); }
+          else {
+            showSetup("Couldn't reach the app",
+              "Couldn't reach " + url + ". Check the URL is deployed and online, then retry.");
+          }
+        });
+      }
+
+      document.getElementById('retryBtn').addEventListener('click', attemptConnect);
+
+      document.getElementById('devOpenBtn').addEventListener('click', function () {
+        var u = (devUrl.value || '').trim();
+        if (!/^https?:\/\/\S+/i.test(u)) { devUrl.focus(); return; }
+        try { localStorage.setItem(DEV_KEY, u); } catch (e) {}
+        // Dev open bypasses the probe (mixed-content can block probing http LAN URLs).
+        window.location.href = u;
+      });
+
+      attemptConnect();
+    })();
+  </script>
+</body>
+</html>

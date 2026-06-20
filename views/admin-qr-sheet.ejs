@@ -1,0 +1,27 @@
+<%- include('partials/head', { title: 'QR labels' }) %>
+<style>
+  @media print {
+    header, footer, .no-print { display: none !important; }
+    body { background: #fff !important; }
+    main { padding: 0 !important; max-width: none !important; }
+  }
+</style>
+<div class="mb-4 flex items-center justify-between no-print">
+  <h1 class="text-2xl font-semibold text-zinc-100">QR labels <span class="text-zinc-600">(<%= serials.length %>)</span></h1>
+  <button onclick="window.print()" class="btn-gold !py-2.5 !px-4 text-sm">🖨 Print</button>
+</div>
+
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-4 print:grid-cols-3">
+  <% serials.forEach(s => { %>
+    <div class="bg-white text-black rounded-lg p-3 text-center break-inside-avoid border border-zinc-300">
+      <div class="flex items-center justify-center gap-1.5 mb-1">
+        <span class="inline-grid place-items-center w-4 h-4 rounded bg-black text-[10px] font-black text-white">L</span>
+        <span class="text-[11px] font-semibold tracking-[0.25em]">LUXWELD</span>
+      </div>
+      <img src="/qr/<%= s %>.png" alt="QR <%= s %>" class="w-full max-w-[150px] mx-auto" />
+      <p class="font-mono text-sm font-semibold mt-1"><%= s %></p>
+      <p class="text-[10px] text-zinc-600 mt-0.5">Scan to register installation</p>
+    </div>
+  <% }) %>
+</div>
+<%- include('partials/foot') %>

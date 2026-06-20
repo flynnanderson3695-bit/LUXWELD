@@ -1,0 +1,9 @@
+{
+  "appId": "com.luxweld.warranty",
+  "appName": "LUXWELD Warranty",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https"
+  }
+}

@@ -1,0 +1,70 @@
+<%- include('partials/head', { title: 'Product ' + product.serial }) %>
+<%
+  const notices = {
+    'not-yet-manufactured': ['amber', 'This product has not been registered by production yet. Installation is not available.'],
+    'already-installed': ['blue', 'This product has already been installed and registered.'],
+    'already-manufactured': ['blue', 'This product has already been registered by production.'],
+    'cancelled': ['red', 'This product has been cancelled and cannot be registered.'],
+    'installed-ok': ['green', 'Installation registered. The warranty is now active.'],
+    'manufactured-ok': ['green', 'Production registered. The product is ready for installation.'],
+  };
+  const n = notice && notices[notice];
+  const tagText = production ? (production.product_tag === 'Custom' ? production.custom_description : production.product_tag) : '';
+%>
+<div class="max-w-md mx-auto">
+  <% if (n) { %>
+    <div class="mb-4 text-sm rounded-xl px-3.5 py-2.5 ring-1
+      <%= n[0]==='green' ? 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/30'
+        : n[0]==='red' ? 'bg-red-500/10 text-red-300 ring-red-500/30'
+        : n[0]==='blue' ? 'bg-sky-500/10 text-sky-300 ring-sky-500/30'
+        : 'bg-amber-500/10 text-amber-300 ring-amber-500/30' %>">
+      <%= n[1] %>
+    </div>
+  <% } %>
+
+  <div class="card">
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <p class="text-xs uppercase tracking-[0.2em] text-gold-400">Product serial</p>
+        <p class="text-xl font-mono font-semibold text-zinc-100"><%= product.serial %></p>
+      </div>
+      <span class="badge <%= statusBadgeClass(status) %>"><%= status %></span>
+    </div>
+
+    <% if (production) { %>
+      <div class="text-sm text-zinc-400 border-t border-ink-600 pt-3 mt-3 space-y-1">
+        <p><span class="text-zinc-500">Tag:</span> <%= tagText %></p>
+        <p><span class="text-zinc-500">Produced:</span> <%= production.production_date %></p>
+      </div>
+    <% } %>
+
+    <% if (warranty) { %>
+      <div class="text-sm border-t border-ink-600 pt-3 mt-3 space-y-1">
+        <p><span class="text-zinc-500">Warranty start:</span> <%= warranty.start_date %></p>
+        <p><span class="text-zinc-500">Warranty end:</span> <%= warranty.end_date %></p>
+        <% if (installation) { %>
+          <p><span class="text-zinc-500">Installed at:</span> <%= installation.site_name %></p>
+        <% } %>
+      </div>
+    <% } %>
+
+    <div class="mt-5 space-y-3">
+      <% if (status === 'Awaiting Production') { %>
+        <p class="text-sm text-zinc-500">Awaiting production registration.</p>
+        <a href="/p/<%= product.serial %>/production" class="btn-ghost w-full">Register production (staff)</a>
+      <% } else if (status === 'Ready for Installation') { %>
+        <p class="text-sm text-zinc-500">Ready for installation. Installers — register the warranty below.</p>
+        <a href="/p/<%= product.serial %>/install" class="btn-gold w-full">Register installation &amp; warranty</a>
+      <% } else if (status === 'Cancelled') { %>
+        <p class="text-sm text-red-300">This unit is cancelled<%= product.cancelled_reason ? ': ' + product.cancelled_reason : '.' %></p>
+      <% } else { %>
+        <p class="text-sm text-zinc-500">No further action required for this product.</p>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (role === 'admin') { %>
+    <a href="/admin/products/<%= product.serial %>" class="block text-center text-sm text-gold-300 mt-4">View admin record →</a>
+  <% } %>
+</div>
+<%- include('partials/foot') %>

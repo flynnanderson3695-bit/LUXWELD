@@ -1,0 +1,29 @@
+<%- include('partials/head', { title: 'Generate QR codes' }) %>
+<div class="max-w-lg mx-auto">
+  <h1 class="text-2xl font-semibold text-zinc-100 mb-1">Generate QR codes</h1>
+  <p class="text-sm text-zinc-500 mb-4">Create product records + QR labels. Apply the labels to flashings after powder coating, when they return to the factory.</p>
+
+  <form method="post" action="/admin/generate" class="card space-y-4 mb-6">
+    <div>
+      <label class="label">How many?</label>
+      <input type="number" name="count" min="1" max="500" value="10" class="input" />
+      <p class="text-xs text-zinc-600 mt-1">Each unit gets a unique serial + QR. Max 500 at once.</p>
+    </div>
+    <div>
+      <label class="label">Warranty length (years)</label>
+      <input type="number" name="warranty_years" min="1" value="10" class="input" />
+    </div>
+    <button class="btn-gold w-full">Generate</button>
+  </form>
+
+  <% if (typeof created !== 'undefined' && created && created.length) { %>
+    <div class="card !border-gold-500/40">
+      <p class="font-medium text-gold-300 mb-2">Created <%= created.length %> product<%= created.length===1?'':'s' %>.</p>
+      <a href="/admin/qr-sheet?serials=<%= created.join(',') %>" class="btn-gold !py-2.5 !px-4 text-sm mb-3">🖨 Open printable QR labels</a>
+      <ul class="text-sm font-mono text-zinc-400 grid grid-cols-2 gap-x-4">
+        <% created.forEach(s => { %><li><%= s %></li><% }) %>
+      </ul>
+    </div>
+  <% } %>
+</div>
+<%- include('partials/foot') %>

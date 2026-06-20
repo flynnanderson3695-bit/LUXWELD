@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0b0d" />
+  <title><%= typeof title !== 'undefined' ? title + ' · LUXWELD' : 'LUXWELD Warranty' %></title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon-192.png" sizes="192x192" type="image/png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="LUXWELD" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink:  { 900: '#0b0b0d', 800: '#141417', 700: '#1d1d22', 600: '#2c2c34' },
+            gold: { 300: '#ecd793', 400: '#dcc06a', 500: '#c8a13e', 600: '#a9842b' },
+          },
+          fontFamily: { sans: ['ui-sans-serif', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+  <style type="text/tailwindcss">
+    @layer components {
+      .card       { @apply bg-ink-800 border border-ink-600 rounded-2xl p-5 shadow-xl shadow-black/40; }
+      .label      { @apply block text-sm font-medium text-zinc-300 mb-1.5; }
+      .input      { @apply w-full bg-ink-900 border border-ink-600 rounded-xl px-3.5 py-3 text-zinc-100 placeholder-zinc-500 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 outline-none; }
+      .btn        { @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-semibold transition select-none; }
+      .btn-gold   { @apply btn bg-gradient-to-b from-gold-400 to-gold-500 text-ink-900 hover:from-gold-300 hover:to-gold-400 shadow-lg shadow-gold-500/10; }
+      .btn-ghost  { @apply btn border border-ink-600 text-zinc-200 hover:border-gold-500 hover:text-gold-300; }
+      .btn-danger { @apply btn bg-red-600/90 text-white hover:bg-red-600; }
+      .badge      { @apply inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full; }
+      .photo-tile { @apply flex flex-col items-center justify-center text-center border-2 border-dashed border-ink-600 rounded-xl p-4 cursor-pointer hover:border-gold-500 hover:bg-ink-700/40 transition; }
+      .navlink    { @apply text-sm text-zinc-300 hover:text-gold-300 transition; }
+    }
+    input, select, textarea { font-size: 16px; } /* avoids iOS zoom-on-focus */
+  </style>
+  <script>
+    // Register the service worker (caches only static branding assets).
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js').catch(function () {});
+      });
+    }
+  </script>
+</head>
+<body class="bg-ink-900 text-zinc-200 min-h-screen antialiased">
+  <div class="h-0.5 bg-gradient-to-r from-gold-600 via-gold-400 to-gold-600"></div>
+  <header class="bg-ink-800/90 backdrop-blur border-b border-ink-600 sticky top-0 z-20">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <a href="/" class="flex items-center gap-2.5 shrink-0">
+        <% if (typeof hasLogo !== 'undefined' && hasLogo) { %>
+          <img src="/luxweld-velux-trusted.svg" alt="LUXWELD" class="h-8 w-auto" />
+        <% } else { %>
+          <span class="inline-grid place-items-center w-8 h-8 rounded-lg bg-gradient-to-b from-gold-400 to-gold-600 text-ink-900 font-black">L</span>
+          <span class="font-semibold tracking-[0.25em] text-gold-300 text-sm">LUXWELD</span>
+        <% } %>
+      </a>
+      <nav class="flex items-center gap-3 sm:gap-4 flex-wrap justify-end">
+        <% if (typeof role !== 'undefined' && role === 'admin') { %>
+          <a href="/admin" class="navlink">Dashboard</a>
+          <a href="/admin/generate" class="navlink">Generate QR</a>
+          <a href="/admin/users" class="navlink">Users</a>
+        <% } %>
+        <% if (typeof role !== 'undefined' && (role === 'production' || role === 'admin')) { %>
+          <a href="/production" class="navlink">Production</a>
+        <% } %>
+        <% if (typeof role !== 'undefined' && role) { %>
+          <span class="hidden sm:inline-flex items-center gap-2 text-xs text-zinc-400 border-l border-ink-600 pl-3">
+            <span class="text-zinc-200"><%= userName %></span>
+            <span class="badge bg-gold-500/15 text-gold-300 ring-1 ring-gold-500/30 capitalize"><%= role %></span>
+          </span>
+          <form action="/logout" method="post" class="inline" onsubmit="return confirm('Log out?');">
+            <button class="navlink hover:text-red-400">Logout</button>
+          </form>
+        <% } %>
+      </nav>
+    </div>
+  </header>
+  <main class="max-w-5xl mx-auto px-4 py-6">

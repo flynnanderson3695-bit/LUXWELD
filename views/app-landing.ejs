@@ -1,0 +1,44 @@
+<%- include('partials/head', { title: 'Get the app' }) %>
+<div class="max-w-lg mx-auto">
+  <div class="text-center mb-6">
+    <% if (typeof hasLogo !== 'undefined' && hasLogo) { %>
+      <img src="/luxweld-velux-trusted.svg" alt="LUXWELD" class="h-12 mx-auto mb-3" />
+    <% } else { %>
+      <div class="inline-grid place-items-center w-14 h-14 rounded-2xl bg-gradient-to-b from-gold-400 to-gold-600 text-ink-900 text-2xl font-black mx-auto mb-3">L</div>
+    <% } %>
+    <h1 class="text-2xl font-semibold text-zinc-100">The LUXWELD app</h1>
+    <p class="text-sm text-zinc-500 mt-1">Optional — for installers who register often.</p>
+  </div>
+
+  <div class="card space-y-4">
+    <div class="flex gap-3">
+      <span class="text-gold-400 text-xl">✓</span>
+      <p class="text-sm text-zinc-300"><span class="text-zinc-100 font-medium">No app required.</span> You can complete the full warranty registration from your phone browser — just scan the QR code on the flashing. No install, no account, no login.</p>
+    </div>
+    <div class="flex gap-3">
+      <span class="text-gold-400 text-xl">✓</span>
+      <p class="text-sm text-zinc-300"><span class="text-zinc-100 font-medium">The app is a convenience.</span> It saves your installer profile and autofills your details on future registrations, so you finish faster on site.</p>
+    </div>
+    <div class="flex gap-3">
+      <span class="text-gold-400 text-xl">✓</span>
+      <p class="text-sm text-zinc-300"><span class="text-zinc-100 font-medium">Same secure system.</span> The app uses the exact same LUXWELD warranty platform, records and photos as the website — nothing is stored separately.</p>
+    </div>
+    <div class="flex gap-3">
+      <span class="text-gold-400 text-xl">✓</span>
+      <p class="text-sm text-zinc-300">You always review your details before submitting.</p>
+    </div>
+  </div>
+
+  <div class="card mt-4">
+    <h2 class="font-semibold text-zinc-200 mb-2">Install to your home screen now</h2>
+    <p class="text-sm text-zinc-400">You can add this site to your home screen as an app today:</p>
+    <ul class="text-sm text-zinc-400 mt-2 space-y-1 list-disc list-inside">
+      <li><span class="text-zinc-200">iPhone (Safari):</span> Share → <em>Add to Home Screen</em>.</li>
+      <li><span class="text-zinc-200">Android (Chrome):</span> ⋮ menu → <em>Install app</em> / <em>Add to Home screen</em>.</li>
+    </ul>
+    <p class="text-xs text-zinc-600 mt-3">Native Android &amp; iPhone apps are coming to the app stores — they will open this same system.</p>
+  </div>
+
+  <a href="javascript:history.back()" class="block text-center text-sm text-gold-300 mt-5">← Back</a>
+</div>
+<%- include('partials/foot') %>

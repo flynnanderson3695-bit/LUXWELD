@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mobile-shell",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4599", "--directory", "mobile/www"],
+      "port": 4599
+    }
+  ]
+}

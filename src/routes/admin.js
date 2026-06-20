@@ -1,0 +1,251 @@
+import { Router } from 'express';
+import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import QRCode from 'qrcode';
+import { stringify } from 'csv-stringify/sync';
+import { customAlphabet } from 'nanoid';
+import { db, tx } from '../db.js';
+import { requireRole, hashPassword } from '../lib/auth.js';
+import { listProducts, getFullProduct, getProductBySerial } from '../lib/queries.js';
+import { addYears } from '../lib/warranty.js';
+import { PRODUCT_TAGS } from '../lib/constants.js';
+import { UPLOAD_ROOT, BASE_URL } from '../lib/config.js';
+
+const serialId = customAlphabet('0123456789ABCDEFGHJKLMNPQRSTUVWXYZ', 8);
+const tokenId = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 16);
+
+function baseUrl(req) {
+  return BASE_URL || `${req.protocol}://${req.get('host')}`;
+}
+
+const router = Router();
+
+// ---- Dashboard ----
+router.get('/admin', requireRole('admin'), (req, res) => {
+  const q = req.query.q || '';
+  const filter = req.query.filter || '';
+  const rows = listProducts({ q, filter });
+  res.render('admin-dashboard', { rows, q, filter, baseUrl: baseUrl(req) });
+});
+
+// ---- Bulk generate ----
+router.get('/admin/generate', requireRole('admin'), (req, res) => {
+  res.render('admin-generate', { created: null, baseUrl: baseUrl(req) });
+});
+
+router.post('/admin/generate', requireRole('admin'), (req, res) => {
+  const count = Math.min(Math.max(parseInt(req.body.count, 10) || 1, 1), 500);
+  const warrantyYears = Math.max(parseInt(req.body.warranty_years, 10) || 10, 1);
+
+  const insert = db.prepare(
+    'INSERT INTO product (serial, public_token, warranty_years) VALUES (?,?,?)'
+  );
+  const created = [];
+  tx(() => {
+    for (let i = 0; i < count; i++) {
+      let serial;
+      do { serial = `SKY-${serialId()}`; } while (getProductBySerial(serial));
+      insert.run(serial, tokenId(), warrantyYears);
+      created.push(serial);
+    }
+  });
+
+  res.render('admin-generate', { created, baseUrl: baseUrl(req) });
+});
+
+// ---- Printable QR label sheet ----
+router.get('/admin/qr-sheet', requireRole('admin'), (req, res) => {
+  const serials = (req.query.serials || '').split(',').map((s) => s.trim()).filter(Boolean);
+  res.render('admin-qr-sheet', { serials, baseUrl: baseUrl(req) });
+});
+
+// ---- QR image (PNG). Encodes the public product URL. ----
+router.get('/qr/:serial.png', async (req, res) => {
+  const product = getProductBySerial(req.params.serial);
+  if (!product) return res.status(404).end();
+  const url = `${baseUrl(req)}/p/${product.serial}`;
+  try {
+    res.type('png');
+    res.end(await QRCode.toBuffer(url, { width: 320, margin: 1 }));
+  } catch {
+    res.status(500).end();
+  }
+});
+
+// ---- Product detail ----
+router.get('/admin/products/:serial', requireRole('admin'), (req, res) => {
+  const data = getFullProduct(req.params.serial);
+  if (!data) return res.status(404).render('not-found', { serial: req.params.serial });
+  res.render('admin-detail', {
+    ...data,
+    tags: PRODUCT_TAGS,
+    baseUrl: baseUrl(req),
+    saved: req.query.saved || null,
+  });
+});
+
+// ---- Correct a record (production + installation + warranty length) ----
+router.post('/admin/products/:serial/edit', requireRole('admin'), (req, res) => {
+  const product = getProductBySerial(req.params.serial);
+  if (!product) return res.status(404).render('not-found', { serial: req.params.serial });
+  const b = req.body || {};
+
+  tx(() => {
+    if (b.warranty_years) {
+      db.prepare('UPDATE product SET warranty_years = ? WHERE id = ?')
+        .run(Math.max(parseInt(b.warranty_years, 10) || product.warranty_years, 1), product.id);
+    }
+
+    const prod = db.prepare('SELECT * FROM production_registration WHERE product_id = ?').get(product.id);
+    if (prod) {
+      const tag = PRODUCT_TAGS.includes(b.product_tag) ? b.product_tag : prod.product_tag;
+      db.prepare(
+        `UPDATE production_registration
+         SET product_tag=?, custom_description=?, production_date=?, team_member_name=?, notes=?
+         WHERE product_id=?`
+      ).run(
+        tag,
+        tag === 'Custom' ? ((b.custom_description || '').trim() || null) : null,
+        b.production_date || prod.production_date,
+        (b.team_member_name ?? prod.team_member_name) || prod.team_member_name,
+        (b.notes_prod || '').trim() || null,
+        product.id
+      );
+    }
+
+    const inst = db.prepare('SELECT * FROM installation_registration WHERE product_id = ?').get(product.id);
+    if (inst) {
+      db.prepare(
+        `UPDATE installation_registration
+         SET installer_name=?, installer_company=?, installer_phone=?, installer_email=?,
+             site_name=?, site_address=?, installation_date=?, notes=?
+         WHERE product_id=?`
+      ).run(
+        b.installer_name ?? inst.installer_name, b.installer_company ?? inst.installer_company,
+        b.installer_phone ?? inst.installer_phone, b.installer_email ?? inst.installer_email,
+        b.site_name ?? inst.site_name, b.site_address ?? inst.site_address,
+        b.installation_date || inst.installation_date,
+        (b.notes_inst || '').trim() || null, product.id
+      );
+    }
+
+    // Re-snapshot warranty dates from (possibly updated) production date + length.
+    const updatedProduct = db.prepare('SELECT * FROM product WHERE id = ?').get(product.id);
+    const updatedProd = db.prepare('SELECT * FROM production_registration WHERE product_id = ?').get(product.id);
+    const warranty = db.prepare('SELECT * FROM warranty WHERE product_id = ?').get(product.id);
+    if (warranty && updatedProd) {
+      const start = updatedProd.production_date;
+      db.prepare('UPDATE warranty SET start_date=?, end_date=?, length_years=? WHERE product_id=?')
+        .run(start, addYears(start, updatedProduct.warranty_years), updatedProduct.warranty_years, product.id);
+    }
+  });
+
+  res.redirect(`/admin/products/${product.serial}?saved=1`);
+});
+
+// ---- Reset installation (admin override for duplicate/incorrect registration) ----
+router.post('/admin/products/:serial/reset-installation', requireRole('admin'), (req, res) => {
+  const product = getProductBySerial(req.params.serial);
+  if (!product) return res.status(404).render('not-found', { serial: req.params.serial });
+  tx(() => {
+    db.prepare("DELETE FROM photo WHERE product_id = ? AND kind = 'INSTALLATION'").run(product.id);
+    db.prepare('DELETE FROM warranty WHERE product_id = ?').run(product.id);
+    db.prepare('DELETE FROM installation_registration WHERE product_id = ?').run(product.id);
+    if (product.status === 'INSTALLED')
+      db.prepare("UPDATE product SET status = 'MANUFACTURED' WHERE id = ?").run(product.id);
+  });
+  res.redirect(`/admin/products/${product.serial}?saved=1`);
+});
+
+// ---- Cancel / restore a unit ----
+router.post('/admin/products/:serial/cancel', requireRole('admin'), (req, res) => {
+  const product = getProductBySerial(req.params.serial);
+  if (!product) return res.status(404).render('not-found', { serial: req.params.serial });
+  if (req.body.action === 'restore') {
+    const hasInst = db.prepare('SELECT 1 FROM installation_registration WHERE product_id=?').get(product.id);
+    const hasProd = db.prepare('SELECT 1 FROM production_registration WHERE product_id=?').get(product.id);
+    const status = hasInst ? 'INSTALLED' : hasProd ? 'MANUFACTURED' : 'CREATED';
+    db.prepare('UPDATE product SET status=?, cancelled_reason=NULL WHERE id=?').run(status, product.id);
+  } else {
+    db.prepare("UPDATE product SET status='CANCELLED', cancelled_reason=? WHERE id=?")
+      .run((req.body.reason || '').trim() || 'Cancelled by admin', product.id);
+  }
+  res.redirect(`/admin/products/${product.serial}?saved=1`);
+});
+
+// ---- CSV export ----
+router.get('/admin/export.csv', requireRole('admin'), (req, res) => {
+  const rows = listProducts({ q: req.query.q || '', filter: req.query.filter || '' });
+  const records = rows.map((r) => ({
+    serial: r.serial,
+    status: r.status,
+    product_tag: r.product_tag || '',
+    custom_description: r.custom_description || '',
+    production_date: r.production_date || '',
+    production_user: r.production_user || '',
+    production_notes: r.production_notes || '',
+    installer_name: r.installer_name || '',
+    installer_company: r.installer_company || '',
+    installer_phone: r.installer_phone || '',
+    installer_email: r.installer_email || '',
+    site_name: r.site_name || '',
+    site_address: r.site_address || '',
+    installation_date: r.installation_date || '',
+    installer_source: r.installer_source || '',
+    warranty_start: r.warranty_start || '',
+    warranty_end: r.warranty_end || '',
+    warranty_years: r.length_years || r.warranty_years || '',
+    production_photos: r.prodPhotoCount,
+    installation_photos: r.instPhotoCount,
+  }));
+  const csv = stringify(records, { header: true });
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="luxweld-warranties-${Date.now()}.csv"`);
+  res.send(csv);
+});
+
+// ---- User management ----
+router.get('/admin/users', requireRole('admin'), (req, res) => {
+  const users = db.prepare('SELECT id, name, username, email, role, active, created_at FROM users ORDER BY role, username').all();
+  res.render('admin-users', { users, error: req.query.error || null, saved: req.query.saved || null });
+});
+
+router.post('/admin/users', requireRole('admin'), (req, res) => {
+  const b = req.body || {};
+  const name = (b.name || '').trim();
+  const username = (b.username || '').trim();
+  const email = (b.email || '').trim() || null;
+  const role = b.role === 'admin' ? 'admin' : 'production';
+  const password = b.password || '';
+
+  if (!name || !username || password.length < 4)
+    return res.redirect('/admin/users?error=invalid');
+  if (db.prepare('SELECT 1 FROM users WHERE lower(username)=lower(?)').get(username))
+    return res.redirect('/admin/users?error=exists');
+
+  db.prepare('INSERT INTO users (name, username, email, role, password_hash) VALUES (?,?,?,?,?)')
+    .run(name, username, email, role, hashPassword(password));
+  res.redirect('/admin/users?saved=1');
+});
+
+router.post('/admin/users/:id/password', requireRole('admin'), (req, res) => {
+  const password = req.body.password || '';
+  if (password.length < 4) return res.redirect('/admin/users?error=invalid');
+  db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hashPassword(password), Number(req.params.id));
+  res.redirect('/admin/users?saved=1');
+});
+
+router.post('/admin/users/:id/toggle', requireRole('admin'), (req, res) => {
+  db.prepare('UPDATE users SET active = 1 - active WHERE id=?').run(Number(req.params.id));
+  res.redirect('/admin/users?saved=1');
+});
+
+// ---- Serve uploaded photos (admin only; not publicly listable) ----
+router.get('/uploads/:serial/:file', requireRole('admin'), (req, res) => {
+  const filePath = resolve(UPLOAD_ROOT, req.params.serial, req.params.file);
+  if (!filePath.startsWith(resolve(UPLOAD_ROOT)) || !existsSync(filePath))
+    return res.status(404).end();
+  res.sendFile(filePath);
+});
+
+export default router;

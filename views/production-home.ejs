@@ -1,0 +1,41 @@
+<%- include('partials/head', { title: 'Production' }) %>
+<%
+  const errs = {
+    'enter-serial': 'Please enter a serial number.',
+    'not-found': 'No product found with that serial.',
+  };
+  const e = error && errs[error];
+%>
+<div class="max-w-md mx-auto">
+  <h1 class="text-2xl font-semibold text-zinc-100 mb-1">Production</h1>
+  <p class="text-sm text-zinc-500 mb-5">Scan a product QR code, or enter its serial to register production details and insurance photos.</p>
+
+  <% if (e) { %>
+    <div class="mb-4 text-sm bg-red-500/10 text-red-300 ring-1 ring-red-500/30 rounded-lg px-3 py-2"><%= e %></div>
+  <% } %>
+
+  <form method="post" action="/production/find" class="card space-y-3 mb-6">
+    <label class="label">Serial number</label>
+    <input name="serial" autofocus placeholder="e.g. SKY-AB12CD34" autocapitalize="characters" class="input font-mono" />
+    <button class="btn-gold w-full text-base">Find product</button>
+    <p class="text-xs text-zinc-600">Tip: scanning the QR on the product opens the right page directly.</p>
+  </form>
+
+  <h2 class="font-semibold text-zinc-300 mb-2">Awaiting production <span class="text-zinc-600">(<%= pending.length %>)</span></h2>
+  <% if (pending.length === 0) { %>
+    <p class="text-sm text-zinc-600">No products are waiting for production registration.</p>
+  <% } else { %>
+    <ul class="space-y-2">
+      <% pending.forEach(p => { %>
+        <li>
+          <a href="/p/<%= p.serial %>/production"
+             class="flex items-center justify-between card !p-4 hover:border-gold-500 transition">
+            <span class="font-mono text-zinc-100"><%= p.serial %></span>
+            <span class="text-gold-300 text-sm">Register →</span>
+          </a>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</div>
+<%- include('partials/foot') %>
