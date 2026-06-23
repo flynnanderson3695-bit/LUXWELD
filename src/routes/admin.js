@@ -5,7 +5,10 @@ import QRCode from 'qrcode';
 import { stringify } from 'csv-stringify/sync';
 import { customAlphabet } from 'nanoid';
 import { db, tx } from '../db.js';
-import { requireRole, hashPassword } from '../lib/auth.js';
+import {
+  requireRole, listUsers, createLocalUser, setRole, setPassword, toggleActive,
+  getUserByEmail, ROLES,
+} from '../lib/auth.js';
 import { listProducts, getFullProduct, getProductBySerial } from '../lib/queries.js';
 import { addYears } from '../lib/warranty.js';
 import { PRODUCT_TAGS } from '../lib/constants.js';
@@ -206,37 +209,45 @@ router.get('/admin/export.csv', requireRole('admin'), (req, res) => {
 
 // ---- User management ----
 router.get('/admin/users', requireRole('admin'), (req, res) => {
-  const users = db.prepare('SELECT id, name, username, email, role, active, created_at FROM users ORDER BY role, username').all();
-  res.render('admin-users', { users, error: req.query.error || null, saved: req.query.saved || null });
+  res.render('admin-users', {
+    users: listUsers(),
+    roles: ROLES,
+    error: req.query.error || null,
+    saved: req.query.saved || null,
+  });
 });
 
+// Create a local (email/password) account with a role.
 router.post('/admin/users', requireRole('admin'), (req, res) => {
   const b = req.body || {};
   const name = (b.name || '').trim();
-  const username = (b.username || '').trim();
-  const email = (b.email || '').trim() || null;
-  const role = b.role === 'admin' ? 'admin' : 'production';
+  const email = (b.email || '').trim().toLowerCase() || null;
+  const role = ROLES.includes(b.role) ? b.role : 'installer';
   const password = b.password || '';
 
-  if (!name || !username || password.length < 4)
+  if (!name || !email || password.length < 6)
     return res.redirect('/admin/users?error=invalid');
-  if (db.prepare('SELECT 1 FROM users WHERE lower(username)=lower(?)').get(username))
-    return res.redirect('/admin/users?error=exists');
+  if (getUserByEmail(email)) return res.redirect('/admin/users?error=exists');
 
-  db.prepare('INSERT INTO users (name, username, email, role, password_hash) VALUES (?,?,?,?,?)')
-    .run(name, username, email, role, hashPassword(password));
+  createLocalUser({ name, email, password, role });
+  res.redirect('/admin/users?saved=1');
+});
+
+// Assign / change a user's role (DB-controlled, not the OAuth provider).
+router.post('/admin/users/:id/role', requireRole('admin'), (req, res) => {
+  setRole(Number(req.params.id), req.body.role);
   res.redirect('/admin/users?saved=1');
 });
 
 router.post('/admin/users/:id/password', requireRole('admin'), (req, res) => {
   const password = req.body.password || '';
-  if (password.length < 4) return res.redirect('/admin/users?error=invalid');
-  db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hashPassword(password), Number(req.params.id));
+  if (password.length < 6) return res.redirect('/admin/users?error=invalid');
+  setPassword(Number(req.params.id), password);
   res.redirect('/admin/users?saved=1');
 });
 
 router.post('/admin/users/:id/toggle', requireRole('admin'), (req, res) => {
-  db.prepare('UPDATE users SET active = 1 - active WHERE id=?').run(Number(req.params.id));
+  toggleActive(Number(req.params.id));
   res.redirect('/admin/users?saved=1');
 });
 

@@ -1,11 +1,13 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import session from 'express-session';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { db } from './db.js'; // initialise schema on boot
 import { currentUser, roleLanding } from './lib/auth.js';
 import { SESSION_SECRET, IS_PROD, PORT } from './lib/config.js';
+import passport, { googleEnabled, appleEnabled } from './lib/passport.js';
 import { statusBadgeClass } from './lib/warranty.js';
 import authRoutes from './routes/auth.js';
 import publicRoutes from './routes/public.js';
@@ -25,6 +27,19 @@ app.set('views', resolve(__dirname, '../views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(SESSION_SECRET));
 app.use(express.static(resolve(__dirname, '../public')));
+
+// Short-lived session used ONLY for the OAuth handshake (state + `next`).
+// The real app session is the signed `uid` cookie set after sign-in.
+app.use(
+  session({
+    name: 'luxweld.oauth',
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { httpOnly: true, sameSite: 'lax', secure: IS_PROD, maxAge: 10 * 60 * 1000 },
+  })
+);
+app.use(passport.initialize());
 
 // Health check for deployment platforms (no auth, verifies DB is reachable).
 app.get('/health', (req, res) => {
@@ -48,6 +63,8 @@ app.use((req, res, next) => {
   res.locals.path = req.path;
   res.locals.statusBadgeClass = statusBadgeClass;
   res.locals.hasLogo = HAS_LOGO;
+  res.locals.googleEnabled = googleEnabled;
+  res.locals.appleEnabled = appleEnabled;
   next();
 });
 

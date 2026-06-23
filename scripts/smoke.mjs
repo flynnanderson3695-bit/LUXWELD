@@ -52,8 +52,9 @@ async function waitUp() {
   }
   throw new Error('server did not start in time');
 }
-async function login(username, password) {
-  const body = new URLSearchParams({ username, password });
+async function login(identifier, password) {
+  // Local login is by email (the `email` field also accepts a username).
+  const body = new URLSearchParams({ email: identifier, password });
   const res = await fetch(`${BASE}/login`, { method: 'POST', body, redirect: 'manual' });
   return { status: res.status, location: res.headers.get('location') || '', cookie: cookieFrom(res), res };
 }
@@ -83,6 +84,17 @@ async function run() {
 
   // 5. admin dashboard works
   ok('admin dashboard 200', (await fetch(`${BASE}/admin`, { headers: { cookie: admin.cookie } })).status === 200);
+
+  // 5b. OAuth: Google hidden + route safely disabled when no creds
+  const loginHtml = await (await fetch(`${BASE}/login`)).text();
+  ok('login hides Google when unconfigured', !/Continue with Google/.test(loginHtml));
+  ok('login hides Apple when unconfigured', !/Continue with Apple/.test(loginHtml));
+  const gOff = await fetch(`${BASE}/auth/google`, { redirect: 'manual' });
+  ok('/auth/google disabled → /login?error=google-off', gOff.status === 302 && /google-off/.test(gOff.headers.get('location') || ''));
+
+  // 5c. role gating: production blocked from admin, admin manages users
+  ok('production blocked from /admin (403)', (await fetch(`${BASE}/admin`, { headers: { cookie: prod.cookie }, redirect: 'manual' })).status === 403);
+  ok('admin users page 200', (await fetch(`${BASE}/admin/users`, { headers: { cookie: admin.cookie } })).status === 200);
 
   // generate 1 product
   const gen = await fetch(`${BASE}/admin/generate`, {

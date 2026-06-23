@@ -7,6 +7,7 @@ import { getFullProduct, getProductBySerial } from '../lib/queries.js';
 import { addYears, todayISO } from '../lib/warranty.js';
 import { ANGLES } from '../lib/constants.js';
 import { UPLOAD_ROOT } from '../lib/config.js';
+import { currentUser } from '../lib/auth.js';
 
 const VALID_SOURCES = ['web', 'pwa', 'android', 'ios'];
 
@@ -58,12 +59,18 @@ router.get('/p/:serial/install', (req, res) => {
   if (data.product.status === 'CANCELLED')
     return res.redirect(`/p/${req.params.serial}?notice=cancelled`);
 
+  // Prefill from a signed-in installer's saved profile (if any).
+  const u = currentUser(req);
+  const values = u
+    ? { installer_name: u.name || '', installer_company: u.company || '', installer_phone: u.phone || '', installer_email: u.email || '' }
+    : {};
+
   res.render('install-form', {
     product: data.product,
     production: data.production,
     angles: ANGLES,
     today: todayISO(),
-    values: {},
+    values,
     error: null,
   });
 });

@@ -1,0 +1,15 @@
+<%- include('partials/head', { title: 'Pending approval' }) %>
+<div class="max-w-md mx-auto mt-10 text-center">
+  <div class="card">
+    <p class="text-4xl mb-3">⏳</p>
+    <h1 class="text-xl font-semibold text-zinc-100 mb-2">Account pending approval</h1>
+    <p class="text-sm text-zinc-400">
+      You're signed in as <span class="text-zinc-200"><%= user.email || user.name %></span>, but your
+      account hasn't been assigned a role yet. A LUXWELD admin needs to approve access.
+    </p>
+    <p class="text-sm text-zinc-500 mt-3">Installers don't need an account — you can register an
+      installation any time by scanning the product QR code.</p>
+    <form action="/logout" method="post" class="mt-5"><button class="btn-ghost w-full">Sign out</button></form>
+  </div>
+</div>
+<%- include('partials/foot') %>

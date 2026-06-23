@@ -38,3 +38,39 @@ export function sessionCookieOptions() {
     maxAge: 1000 * 60 * 60 * 12, // 12h
   };
 }
+
+// ---- Admin bootstrap (first-run seeding only) ----
+export const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@luxweld.local').toLowerCase();
+export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (IS_PROD ? '' : 'admin123');
+
+// ---- Role allowlists (comma-separated emails) ----
+// Emails here are auto-assigned on first OAuth/local sign-in. Roles are still
+// stored in (and can be overridden from) the database — the provider is never
+// trusted for role on its own.
+function emailList(v) {
+  return (v || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+export const ADMIN_EMAILS = emailList(process.env.ADMIN_EMAILS);
+export const PRODUCTION_EMAILS = emailList(process.env.PRODUCTION_EMAILS);
+
+// ---- Google OAuth ----
+export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+export const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+export const GOOGLE_CALLBACK_URL =
+  process.env.GOOGLE_CALLBACK_URL || (BASE_URL ? `${BASE_URL}/auth/google/callback` : '');
+export const GOOGLE_ENABLED = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+
+// ---- Apple OAuth (Sign in with Apple) ----
+export const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID || ''; // Services ID
+export const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID || '';
+export const APPLE_KEY_ID = process.env.APPLE_KEY_ID || '';
+// Private key: accept inline PEM (with \n) or a file path.
+export const APPLE_PRIVATE_KEY = (process.env.APPLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+export const APPLE_CALLBACK_URL =
+  process.env.APPLE_CALLBACK_URL || (BASE_URL ? `${BASE_URL}/auth/apple/callback` : '');
+export const APPLE_ENABLED = Boolean(
+  APPLE_CLIENT_ID && APPLE_TEAM_ID && APPLE_KEY_ID && APPLE_PRIVATE_KEY
+);

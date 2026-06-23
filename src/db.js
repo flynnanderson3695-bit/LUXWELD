@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { hashPassword } from './lib/password.js';
-import { DB_PATH } from './lib/config.js';
+import { DB_PATH, ADMIN_EMAIL, ADMIN_PASSWORD, IS_PROD } from './lib/config.js';
 
 mkdirSync(dirname(DB_PATH), { recursive: true });
 
@@ -24,12 +24,16 @@ export function tx(fn) {
   }
 }
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 function tableExists(name) {
   return Boolean(
     db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(name)
   );
+}
+
+function columnExists(table, col) {
+  return db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
 }
 
 // ---- Tables that never changed shape ----
@@ -79,13 +83,21 @@ function createUsersTable() {
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      username TEXT NOT NULL UNIQUE,
+      username TEXT UNIQUE,
       email TEXT,
-      role TEXT NOT NULL CHECK (role IN ('admin','production')),
-      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'pending'
+        CHECK (role IN ('admin','production','installer','pending')),
+      password_hash TEXT,
+      provider TEXT NOT NULL DEFAULT 'local',
+      provider_id TEXT,
+      phone TEXT,
+      company TEXT,
       active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_provider
+      ON users(provider, provider_id) WHERE provider_id IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(lower(email));
   `);
 }
 
@@ -196,28 +208,63 @@ function migrateV2toV3() {
   }
 }
 
+// v3 -> v4: real-auth user model. Widen roles to admin/production/installer/
+// pending, allow OAuth users (nullable password, provider + provider_id),
+// add installer profile fields. Existing users become provider='local'.
+function migrateV3toV4() {
+  // If the users table already has the new shape (e.g. created fresh by a
+  // legacy migration), just stamp the version.
+  if (columnExists('users', 'provider')) {
+    db.exec('PRAGMA user_version = 4;');
+    return;
+  }
+  db.exec('PRAGMA foreign_keys = OFF;');
+  db.exec('BEGIN');
+  try {
+    db.exec('ALTER TABLE users RENAME TO users_old;');
+    createUsersTable();
+    db.exec(`
+      INSERT INTO users (id, name, username, email, role, password_hash, provider, active, created_at)
+      SELECT id, name, username, email, role, password_hash, 'local', active, created_at
+      FROM users_old;
+    `);
+    db.exec('DROP TABLE users_old;');
+    db.exec('PRAGMA user_version = 4;');
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    db.exec('PRAGMA foreign_keys = ON;');
+    throw e;
+  }
+  db.exec('PRAGMA foreign_keys = ON;');
+}
+
 function seedUsers() {
   const count = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
   if (count > 0) return;
-  const ins = db.prepare(
-    'INSERT INTO users (name, username, email, role, password_hash) VALUES (?,?,?,?,?)'
+
+  const insLocal = db.prepare(
+    'INSERT INTO users (name, username, email, role, password_hash, provider) VALUES (?,?,?,?,?,?)'
   );
-  const adminPw = process.env.ADMIN_PASSWORD || 'admin123';
-  const prodPw = process.env.SEED_PRODUCTION_PASSWORD; // optional override
-  const seed = [
-    ['Administrator', 'admin', 'admin@luxweld.example', 'admin', adminPw],
-    ['Mike Tanner', 'mike', 'mike@luxweld.example', 'production', prodPw || 'mike123'],
-    ['Sara Lee', 'sara', 'sara@luxweld.example', 'production', prodPw || 'sara123'],
-  ];
-  for (const [name, username, email, role, pw] of seed) {
-    ins.run(name, username, email, role, hashPassword(pw));
+
+  // Admin recovery account (email + password). In production this REQUIRES
+  // ADMIN_PASSWORD — no default password is ever seeded in production.
+  if (ADMIN_PASSWORD) {
+    insLocal.run('Administrator', 'admin', ADMIN_EMAIL, 'admin', hashPassword(ADMIN_PASSWORD), 'local');
+    console.log(`Seeded admin account: ${ADMIN_EMAIL} (password from ${process.env.ADMIN_PASSWORD ? 'ADMIN_PASSWORD' : 'dev default'}).`);
+  } else {
+    console.warn(
+      '!! No ADMIN_PASSWORD set in production — no admin account seeded.\n' +
+      '!! Set ADMIN_PASSWORD (and optionally ADMIN_EMAIL) and restart, then sign in to manage users.'
+    );
   }
-  const adminNote = process.env.ADMIN_PASSWORD ? 'from ADMIN_PASSWORD' : 'default "admin123"';
-  const prodNote = prodPw ? 'from SEED_PRODUCTION_PASSWORD' : 'defaults mike123 / sara123';
-  console.log(
-    `Seeded users: admin (${adminNote}); production mike, sara (${prodNote}). ` +
-    'Change all passwords in Admin → Users after first login.'
-  );
+
+  // Demo production users for LOCAL testing only — never in production.
+  if (!IS_PROD) {
+    insLocal.run('Mike Tanner', 'mike', 'mike@luxweld.local', 'production', hashPassword('mike123'), 'local');
+    insLocal.run('Sara Lee', 'sara', 'sara@luxweld.local', 'production', hashPassword('sara123'), 'local');
+    console.log('Seeded dev production users: mike/mike123, sara/sara123 (development only).');
+  }
 }
 
 // ---- Boot: create or migrate, then seed users ----
@@ -234,6 +281,7 @@ if (freshDb) {
     console.log(`Migrating database from v${version} to v${SCHEMA_VERSION}…`);
     if (version < 2) { migrateLegacyToV2(); version = 2; }
     if (version < 3) { migrateV2toV3(); version = 3; }
+    if (version < 4) { migrateV3toV4(); version = 4; }
     console.log('Migration complete. Existing records preserved.');
   }
 }

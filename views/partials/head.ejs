@@ -74,6 +74,9 @@
         <% if (typeof role !== 'undefined' && (role === 'production' || role === 'admin')) { %>
           <a href="/production" class="navlink">Production</a>
         <% } %>
+        <% if (typeof role !== 'undefined' && role === 'installer') { %>
+          <a href="/account" class="navlink">My profile</a>
+        <% } %>
         <% if (typeof role !== 'undefined' && role) { %>
           <span class="hidden sm:inline-flex items-center gap-2 text-xs text-zinc-400 border-l border-ink-600 pl-3">
             <span class="text-zinc-200"><%= userName %></span>

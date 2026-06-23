@@ -46,18 +46,61 @@ separate offline data store. QR codes always open a normal HTTPS web page
 | `SESSION_SECRET` | cookie signing secret (long random in prod; `COOKIE_SECRET` still accepted) |
 | `DB_PATH` / `DATABASE_URL` | SQLite file path (point at a persistent volume) |
 | `UPLOAD_DIR` / `UPLOAD_ROOT` | photo storage dir (persistent volume) |
-| `ADMIN_PASSWORD` | password for the seeded `admin` user (first boot only) |
+| `ADMIN_EMAIL` | email of the seeded admin recovery account (first boot only) |
+| `ADMIN_PASSWORD` | password for the seeded admin (**required in production** — no default) |
+| `ADMIN_EMAILS` / `PRODUCTION_EMAILS` | comma-separated allowlists auto-assigned on first OAuth sign-in |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth (button hidden if unset) |
+| `GOOGLE_CALLBACK_URL` | optional; defaults to `BASE_URL/auth/google/callback` |
+| `APPLE_CLIENT_ID` / `APPLE_TEAM_ID` / `APPLE_KEY_ID` / `APPLE_PRIVATE_KEY` | Apple OAuth (button hidden if unset) |
+| `APPLE_CALLBACK_URL` | optional; defaults to `BASE_URL/auth/apple/callback` |
 
-## Seeded logins
+## Sign-in & roles
 
-| Username | Password | Role |
-|---|---|---|
-| `admin` | `admin123` (or `ADMIN_PASSWORD`) | Admin — full access |
-| `mike` | `mike123` | Production |
-| `sara` | `sara123` | Production |
+Sign-in is via **Google** (and **Apple** if configured), with a **secure
+email/password fallback** for admin recovery and admin-created accounts. There
+are **no shared demo passwords in production** — `ADMIN_PASSWORD` is required at
+first boot and seeds a single admin account.
 
-**Change these in production** (Admin → Users → Reset). Installers need **no login**.
-Add/disable/reset staff under **Admin → Users**.
+**Roles (controlled in the DB, never by the OAuth provider):**
+
+| Role | Access |
+|---|---|
+| `admin` | Everything: dashboard, generate QR, users/roles, all records & photos |
+| `production` | Production screens only (register QR + 4 production photos) |
+| `installer` | Public QR pages; signed-in installers get saved-profile autofill |
+| `pending` | No access yet — waiting for an admin to assign a role |
+
+New Google/Apple sign-ins arrive as **installer** unless their email is in
+`ADMIN_EMAILS` / `PRODUCTION_EMAILS`. Admins assign/override roles under
+**Admin → Users**. Installers never need to sign in to register a warranty.
+
+**Dev only** (when `NODE_ENV` ≠ production): seeds `admin@luxweld.local`/`admin123`
+plus production users `mike`/`mike123`, `sara`/`sara123` for local testing.
+
+## Google OAuth setup
+
+1. [Google Cloud Console](https://console.cloud.google.com) → create/select a project.
+2. **APIs & Services → OAuth consent screen** → External → add app name, support
+   email, and your domain; add yourself as a test user (or publish).
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID → Web**.
+4. **Authorised redirect URI:** `https://warranty.luxweld.com.au/auth/google/callback`
+   (and `http://localhost:3000/auth/google/callback` for local dev).
+5. Copy the Client ID + Secret into `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
+   The button appears automatically once both are set.
+
+## Apple OAuth setup (optional)
+
+Requires an **Apple Developer account** ($99/yr). If you don't have one yet, leave
+the `APPLE_*` vars blank — the Apple button stays hidden and nothing breaks.
+
+1. [developer.apple.com](https://developer.apple.com) → Certificates, IDs & Profiles.
+2. Create an **App ID**, then a **Services ID** (this is `APPLE_CLIENT_ID`) and
+   enable "Sign in with Apple"; set the return URL to
+   `https://warranty.luxweld.com.au/auth/apple/callback`.
+3. Create a **Sign in with Apple key** → download the `.p8` → that's
+   `APPLE_PRIVATE_KEY` (paste contents with `\n` for newlines); note the `APPLE_KEY_ID`.
+4. Your `APPLE_TEAM_ID` is in the top-right of the developer portal.
+5. Set all four `APPLE_*` vars; the button appears automatically.
 
 ## Branding / logo
 
@@ -159,26 +202,43 @@ or warranty data, so it can't break submissions or leak private data.
 
 Requires HTTPS (or localhost) to install.
 
-## Deployment checklist (website first)
+## Deployment checklist (website first) — Railway + Crazy Domains
 
 Launch the website before touching the apps. In order:
 
-1. **Deploy the Node app online** — Node 18+ host (Render, Railway, Fly.io, VPS)
-   with a **persistent disk** for the database and uploads. `npm install && npm start`.
-2. **Set `BASE_URL`** to your real HTTPS domain (e.g. `https://warranty.luxweld.com.au`)
-   so QR codes encode a public URL, not localhost.
-3. **Set `SESSION_SECRET`** to a long random string (and `NODE_ENV=production`,
-   which enables HTTPS-only cookies + `trust proxy`).
-4. **Set database & upload persistence** — `DB_PATH=/data/app.db`,
-   `UPLOAD_DIR=/data/uploads` on the persistent disk. The DB auto-migrates on boot.
-5. **Test `/health`** → should return `{"status":"ok"}`.
-6. **Generate QR** labels in the admin dashboard.
-7. **Scan the QR from a phone** → it opens the live `/p/:serial` page.
-8. **Complete the installer form in the phone browser** (no app/login needed),
-   including the 4 camera photos.
-9. **Then build the Android/iOS wrappers** (see below) pointing at the same domain.
+1. **Push to GitHub**, then on [Railway](https://railway.app): **New Project →
+   Deploy from GitHub repo**. Railway uses `railway.json` (Nixpacks, `npm start`,
+   healthcheck `/health`) and `.nvmrc` (Node 24).
+2. **Add a persistent volume** — Service → Settings → **Volumes → mount at `/data`**.
+   This holds the SQLite DB + photos across deploys.
+3. **Set environment variables** (Service → Variables):
+   - `NODE_ENV=production`
+   - `BASE_URL=https://warranty.luxweld.com.au` (use the Railway temp domain first)
+   - `SESSION_SECRET=<long random>` — `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+   - `DB_PATH=/data/app.db`, `UPLOAD_DIR=/data/uploads`
+   - `ADMIN_EMAIL=...`, `ADMIN_PASSWORD=<strong>` (required — seeds the admin once)
+   - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (when ready)
+   - `ADMIN_EMAILS`, `PRODUCTION_EMAILS` (optional allowlists)
+   - Apple vars only if you have them; `LUXWELD_APP_URL` for the wrapper later.
+   Don't set `PORT` — Railway injects it.
+4. **Generate a temporary domain** — Service → Settings → Networking → Generate
+   Domain. Set `BASE_URL` to it for now and confirm `/health` + login work.
+5. **Add the custom domain in Railway** — Settings → Networking → **Custom Domain**
+   → `warranty.luxweld.com.au`. Railway shows a **CNAME target** (e.g.
+   `xxxx.up.railway.app`).
+6. **Add the CNAME in Crazy Domains** — log in → **My Domains → luxweld.com.au →
+   DNS / Manage DNS** → **Add record**: Type `CNAME`, Host/Name `warranty`,
+   Value/Points to the Railway target, TTL default. Save. (Do **not** use an A
+   record; Railway wants CNAME.) Wait for Railway to show the domain **Active**
+   (TLS auto-issues; can take minutes to an hour).
+7. **Update `BASE_URL`** to `https://warranty.luxweld.com.au` and redeploy.
+8. **Update OAuth redirect URIs** to the final domain (Google/Apple consoles).
+9. **Test `/health`** → `{"status":"ok"}`; sign in as admin; assign roles.
+10. **Only now generate real QR labels** (so they bake in the final domain), scan
+    from a phone, and complete an installer registration in the phone browser.
+11. **Then** build the Android/iOS wrappers pointing at the same domain.
 
-Put HTTPS in front (platform TLS or nginx/Caddy). Back up the persistent disk.
+Back up the `/data` volume regularly.
 
 ### Phone QR testing (local, before you have a domain)
 

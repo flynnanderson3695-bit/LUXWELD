@@ -1,0 +1,8 @@
+<%- include('partials/head', { title: 'Not allowed' }) %>
+<div class="max-w-md mx-auto mt-12 text-center">
+  <p class="text-5xl mb-3">🔒</p>
+  <h1 class="text-xl font-semibold text-zinc-100 mb-2">Not allowed</h1>
+  <p class="text-zinc-500">Your account doesn't have access to this area<% if (typeof needed !== 'undefined' && needed) { %> (<%= needed %> only)<% } %>.</p>
+  <a href="/" class="inline-block mt-4 text-gold-300">Go to your home →</a>
+</div>
+<%- include('partials/foot') %>

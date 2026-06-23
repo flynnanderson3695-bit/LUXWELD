@@ -1,0 +1,32 @@
+<%- include('partials/head', { title: 'My profile' }) %>
+<div class="max-w-md mx-auto">
+  <h1 class="text-2xl font-semibold text-zinc-100 mb-1">My installer profile</h1>
+  <p class="text-sm text-zinc-500 mb-4">Saved details that pre-fill your future installation registrations.</p>
+
+  <% if (saved) { %>
+    <div class="mb-4 text-sm bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30 rounded-lg px-3 py-2">Saved.</div>
+  <% } %>
+
+  <form method="post" action="/account" class="card space-y-4">
+    <div>
+      <label class="label">Name</label>
+      <input name="name" value="<%= user.name || '' %>" class="input" />
+    </div>
+    <div>
+      <label class="label">Email</label>
+      <input value="<%= user.email || '' %>" class="input opacity-60" disabled />
+    </div>
+    <div>
+      <label class="label">Company</label>
+      <input name="company" value="<%= user.company || '' %>" class="input" />
+    </div>
+    <div>
+      <label class="label">Phone</label>
+      <input name="phone" value="<%= user.phone || '' %>" class="input" />
+    </div>
+    <button class="btn-gold w-full">Save profile</button>
+  </form>
+
+  <p class="text-sm text-zinc-500 mt-5 text-center">To register an installation, scan the QR code on the flashing.</p>
+</div>
+<%- include('partials/foot') %>
