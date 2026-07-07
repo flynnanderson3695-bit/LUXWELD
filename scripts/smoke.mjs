@@ -1,7 +1,7 @@
 // Self-contained smoke test. Boots the server on a throwaway DB + upload dir,
 // runs the checks, then tears everything down. Run with: npm run smoke
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -189,6 +189,19 @@ async function run() {
     }, ['front', 'back', 'left', 'right']), redirect: 'manual',
   });
   ok('duplicate install blocked', dup.status === 302 && /already-installed/.test(dup.headers.get('location') || ''));
+
+  // --- Archive / self-describing bundles / cloud ---
+  const infoPath = join(tmp, 'uploads', serial, 'info.json');
+  ok('info.json written next to photos', existsSync(infoPath) && /installer_name/.test(existsSync(infoPath) ? readFileSync(infoPath, 'utf8') : ''));
+  ok('archive page renders', (await fetch(`${BASE}/admin/archive`, { headers: { cookie: admin.cookie } })).status === 200);
+  const bundle = await fetch(`${BASE}/admin/products/${serial}/bundle.zip`, { headers: { cookie: admin.cookie } });
+  const bbuf = Buffer.from(await bundle.arrayBuffer());
+  ok('per-record bundle.zip is a zip', bundle.status === 200 && bbuf.slice(0, 2).toString() === 'PK');
+  const arch = await fetch(`${BASE}/admin/archive.zip`, { headers: { cookie: admin.cookie } });
+  const abuf = Buffer.from(await arch.arrayBuffer());
+  ok('full archive.zip is a zip', arch.status === 200 && abuf.slice(0, 2).toString() === 'PK');
+  const sync = await fetch(`${BASE}/admin/cloud/sync`, { method: 'POST', headers: { cookie: admin.cookie }, redirect: 'manual' });
+  ok('cloud sync gracefully disabled when unconfigured', sync.status === 302 && /cloud-disabled/.test(sync.headers.get('location') || ''));
 
   // --- Cloud / PWA / app endpoints ---
   const health = await fetch(`${BASE}/health`);

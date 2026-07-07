@@ -6,9 +6,12 @@
     <div class="mt-3 mb-2 text-sm bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30 rounded-lg px-3 py-2">Saved.</div>
   <% } %>
 
-  <div class="flex items-center justify-between my-3">
+  <div class="flex items-center justify-between my-3 gap-3">
     <h1 class="text-2xl font-semibold font-mono text-zinc-100"><%= product.serial %></h1>
-    <span class="badge <%= statusBadgeClass(status) %>"><%= status %></span>
+    <div class="flex items-center gap-3">
+      <a href="/admin/products/<%= product.serial %>/bundle.zip" class="btn-ghost !py-2 !px-3 text-sm">⬇ Bundle</a>
+      <span class="badge <%= statusBadgeClass(status) %>"><%= status %></span>
+    </div>
   </div>
 
   <div class="grid sm:grid-cols-2 gap-4">

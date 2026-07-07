@@ -153,7 +153,40 @@ wordmark is shown. Palette: black/charcoal surfaces with warm gold accents.
 Stored on local disk under `data/uploads/<serial>/` (`prod-*` for production,
 `inst-*` for installation), served only through the admin-gated `/uploads`
 route — **not publicly listable**. Validation: images only, max 12 MB each,
-all 4 angles required. (For production, move to S3/Blob with signed URLs.)
+all 4 angles required.
+
+Each serial's folder is **self-describing**: on every registration/edit an
+`info.json` + `record.txt` (installer, production, installation, warranty
+details) is written next to the photos, so the info always travels with the
+pictures — on disk, in downloads, and in the cloud mirror.
+
+## Records archive & cloud backup
+
+- **Archive page** (`/admin/archive`) — a LUXWELD-styled gallery of every
+  warranty with its photos + all info together; searchable/filterable.
+- **Downloads** — per-record **Bundle** (`/admin/products/:serial/bundle.zip`)
+  and **Download full archive** (`/admin/archive.zip`): a zip where each serial
+  is a folder of `info.json` + `record.txt` + its photos.
+- **Cloud mirror (Cloudflare R2 / S3)** — when the `R2_*` (or `S3_*`) env vars
+  are set, every registration is mirrored to the bucket as
+  `warranties/<serial>/…` and DB snapshots go to `backups/`. It's **best-effort**:
+  a cloud failure is logged and never blocks a registration. Use **Sync all to
+  cloud** and **Backup database** on the Archive page for a one-time backfill.
+
+### Cloudflare R2 setup
+
+1. Cloudflare dashboard → **R2 → Create bucket** (e.g. `luxweld-warranties`).
+   Optionally enable **Object versioning** so nothing can be permanently deleted.
+2. **R2 → Manage API Tokens → Create** an **Object Read & Write** token; copy the
+   Access Key ID + Secret, and note your account's S3 endpoint
+   `https://<accountid>.r2.cloudflarestorage.com`.
+3. Set env vars: `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`,
+   `R2_SECRET_ACCESS_KEY` (see `.env.example`). Redeploy.
+4. Open **Archive → Sync all to cloud** once to back-fill existing records.
+   The panel flips to **Cloud backup ON**.
+
+(For AWS S3 instead: set `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`,
+`S3_SECRET_ACCESS_KEY` and leave `R2_ENDPOINT` blank.)
 
 ## Database
 

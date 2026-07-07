@@ -15,6 +15,9 @@
     "set-app-url": "node scripts/set-app-url.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1080.0",
+    "@aws-sdk/lib-storage": "^3.1080.0",
+    "archiver": "^7.0.1",
     "cookie-parser": "^1.4.7",
     "csv-stringify": "^6.5.2",
     "ejs": "^3.1.10",

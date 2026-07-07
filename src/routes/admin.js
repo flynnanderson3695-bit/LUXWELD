@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
+import archiver from 'archiver';
 import QRCode from 'qrcode';
 import { stringify } from 'csv-stringify/sync';
 import { customAlphabet } from 'nanoid';
@@ -9,10 +10,12 @@ import {
   requireRole, listUsers, createLocalUser, setRole, setPassword, toggleActive,
   getUserByEmail, ROLES,
 } from '../lib/auth.js';
-import { listProducts, getFullProduct, getProductBySerial } from '../lib/queries.js';
+import { listProducts, getFullProduct, getProductBySerial, getPhotos } from '../lib/queries.js';
 import { addYears } from '../lib/warranty.js';
 import { PRODUCT_TAGS } from '../lib/constants.js';
-import { UPLOAD_ROOT, BASE_URL } from '../lib/config.js';
+import { UPLOAD_ROOT, BASE_URL, CLOUD_BUCKET } from '../lib/config.js';
+import { recordInfo, recordText, writeLocalInfo } from '../lib/records.js';
+import { cloudEnabled, mirrorSerialAsync, syncAll, backupDatabase } from '../lib/cloud.js';
 
 const serialId = customAlphabet('0123456789ABCDEFGHJKLMNPQRSTUVWXYZ', 8);
 const tokenId = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 16);
@@ -143,6 +146,10 @@ router.post('/admin/products/:serial/edit', requireRole('admin'), (req, res) => 
     }
   });
 
+  // Refresh the self-describing info + cloud mirror after an admin correction.
+  writeLocalInfo(product.serial);
+  mirrorSerialAsync(product.serial);
+
   res.redirect(`/admin/products/${product.serial}?saved=1`);
 });
 
@@ -157,6 +164,8 @@ router.post('/admin/products/:serial/reset-installation', requireRole('admin'), 
     if (product.status === 'INSTALLED')
       db.prepare("UPDATE product SET status = 'MANUFACTURED' WHERE id = ?").run(product.id);
   });
+  writeLocalInfo(product.serial);
+  mirrorSerialAsync(product.serial);
   res.redirect(`/admin/products/${product.serial}?saved=1`);
 });
 
@@ -249,6 +258,63 @@ router.post('/admin/users/:id/password', requireRole('admin'), (req, res) => {
 router.post('/admin/users/:id/toggle', requireRole('admin'), (req, res) => {
   toggleActive(Number(req.params.id));
   res.redirect('/admin/users?saved=1');
+});
+
+// ---- Archive / Records Vault: gallery of every warranty with its photos + info ----
+router.get('/admin/archive', requireRole('admin'), (req, res) => {
+  const q = req.query.q || '';
+  const filter = req.query.filter || '';
+  const rows = listProducts({ q, filter }).map((r) => ({ ...r, photos: getPhotos(r.id) }));
+  res.render('admin-archive', {
+    rows, q, filter, baseUrl: baseUrl(req),
+    cloudEnabled, cloudBucket: CLOUD_BUCKET,
+    synced: req.query.synced || null,
+  });
+});
+
+// Stream a zip where each serial is a self-describing folder (photos + info).
+function streamBundle(res, serials, filename) {
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  const archive = archiver('zip', { zlib: { level: 6 } });
+  archive.on('error', (e) => { console.error('zip error:', e); try { res.status(500).end(); } catch {} });
+  archive.pipe(res);
+  for (const serial of serials) {
+    const info = recordInfo(serial);
+    if (!info) continue;
+    archive.append(JSON.stringify(info, null, 2), { name: `${serial}/info.json` });
+    archive.append(recordText(info), { name: `${serial}/record.txt` });
+    const photos = [...(info.production?.photos || []), ...(info.installation?.photos || [])];
+    for (const p of photos) {
+      const local = resolve(UPLOAD_ROOT, serial, p.file);
+      if (existsSync(local)) archive.file(local, { name: `${serial}/${p.file}` });
+    }
+  }
+  archive.finalize();
+}
+
+router.get('/admin/products/:serial/bundle.zip', requireRole('admin'), (req, res) => {
+  const product = getProductBySerial(req.params.serial);
+  if (!product) return res.status(404).render('not-found', { serial: req.params.serial });
+  streamBundle(res, [product.serial], `luxweld-${product.serial}.zip`);
+});
+
+router.get('/admin/archive.zip', requireRole('admin'), (req, res) => {
+  const rows = listProducts({ q: req.query.q || '', filter: req.query.filter || '' });
+  streamBundle(res, rows.map((r) => r.serial), `luxweld-archive-${Date.now()}.zip`);
+});
+
+// ---- Cloud mirror actions ----
+router.post('/admin/cloud/sync', requireRole('admin'), async (req, res) => {
+  const r = await syncAll();
+  const msg = r.skipped ? 'cloud-disabled' : `synced ${r.mirrored} records, ${r.photos} photos`;
+  res.redirect('/admin/archive?synced=' + encodeURIComponent(msg));
+});
+
+router.post('/admin/cloud/backup-db', requireRole('admin'), async (req, res) => {
+  const r = await backupDatabase();
+  const msg = r.skipped ? 'cloud-disabled' : r.ok ? 'database backed up to cloud' : 'backup failed';
+  res.redirect('/admin/archive?synced=' + encodeURIComponent(msg));
 });
 
 // ---- Serve uploaded photos (admin only; not publicly listable) ----

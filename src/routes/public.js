@@ -8,6 +8,8 @@ import { addYears, todayISO } from '../lib/warranty.js';
 import { ANGLES } from '../lib/constants.js';
 import { UPLOAD_ROOT } from '../lib/config.js';
 import { currentUser } from '../lib/auth.js';
+import { writeLocalInfo } from '../lib/records.js';
+import { mirrorSerialAsync } from '../lib/cloud.js';
 
 const VALID_SOURCES = ['web', 'pwa', 'android', 'ios'];
 
@@ -156,6 +158,10 @@ router.post('/p/:serial/install', (req, res) => {
     } catch (e) {
       return rerender('Could not save installation. It may have already been registered.');
     }
+
+    // Write the self-describing info file next to the photos + mirror to cloud.
+    writeLocalInfo(serial);
+    mirrorSerialAsync(serial);
 
     res.redirect(`/p/${serial}?notice=installed-ok`);
   });

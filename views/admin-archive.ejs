@@ -1,0 +1,96 @@
+<%- include('partials/head', { title: 'Archive' }) %>
+<div class="flex items-center justify-between mb-4 gap-3">
+  <div>
+    <h1 class="text-2xl font-semibold text-zinc-100">Records archive</h1>
+    <p class="text-sm text-zinc-500">Every warranty with its photos and all the info together.</p>
+  </div>
+  <a href="/admin/archive.zip<%= q||filter ? '?' + (q?'q='+encodeURIComponent(q):'') + (filter?'&filter='+filter:'') : '' %>"
+     class="btn-gold !py-2.5 !px-4 text-sm">⬇ Download full archive (.zip)</a>
+</div>
+
+<!-- Cloud status panel -->
+<div class="card mb-4 <%= cloudEnabled ? '!border-emerald-500/30' : '!border-amber-500/30' %>">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="text-sm">
+      <% if (cloudEnabled) { %>
+        <span class="badge bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30 mr-2">Cloud backup ON</span>
+        <span class="text-zinc-400">Mirroring to bucket <span class="text-zinc-200 font-mono"><%= cloudBucket %></span>. New registrations copy automatically.</span>
+      <% } else { %>
+        <span class="badge bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30 mr-2">Cloud backup OFF</span>
+        <span class="text-zinc-400">Set the R2/S3 env vars to enable an off-Railway copy. Records are still stored on the server volume.</span>
+      <% } %>
+    </div>
+    <div class="flex gap-2 shrink-0">
+      <form method="post" action="/admin/cloud/sync"><button class="btn-ghost !py-2 !px-3 text-sm" <%= cloudEnabled?'':'disabled' %>>Sync all to cloud</button></form>
+      <form method="post" action="/admin/cloud/backup-db"><button class="btn-ghost !py-2 !px-3 text-sm" <%= cloudEnabled?'':'disabled' %>>Backup database</button></form>
+    </div>
+  </div>
+  <% if (synced) { %><p class="text-xs text-zinc-400 mt-2">Result: <%= synced %></p><% } %>
+</div>
+
+<!-- Search + filters (same buckets as the dashboard) -->
+<form method="get" action="/admin/archive" class="mb-3">
+  <div class="flex gap-2">
+    <input name="q" value="<%= q %>" placeholder="Search serial, installer, site, address, tag…" class="input flex-1" />
+    <input type="hidden" name="filter" value="<%= filter %>" />
+    <button class="btn-ghost !px-5">Search</button>
+  </div>
+</form>
+<%
+  const filters = [['','All'],['created','QR created'],['manufactured','Ready to install'],['installed','Installed'],['active','Warranty active'],['expired','Warranty expired'],['incomplete','Incomplete'],['cancelled','Cancelled']];
+  const angleLabel = { FRONT:'Front', BACK:'Back', LEFT:'Left', RIGHT:'Right' };
+%>
+<div class="flex flex-wrap gap-2 mb-4 text-sm">
+  <% filters.forEach(([val,label]) => { %>
+    <a href="/admin/archive?filter=<%= val %><%= q ? '&q='+encodeURIComponent(q) : '' %>"
+       class="px-3 py-1.5 rounded-full border <%= filter===val ? 'bg-gold-500 text-ink-900 border-gold-500 font-medium' : 'border-ink-600 text-zinc-400 hover:border-gold-500 hover:text-gold-300' %>"><%= label %></a>
+  <% }) %>
+</div>
+
+<p class="text-sm text-zinc-500 mb-3"><%= rows.length %> record<%= rows.length===1?'':'s' %></p>
+
+<div class="grid gap-4 sm:grid-cols-2">
+  <% rows.forEach(r => {
+       const tagText = r.product_tag === 'Custom' ? (r.custom_description || 'Custom') : (r.product_tag || '—');
+       const prod = r.photos.filter(p => p.kind === 'PRODUCTION');
+       const inst = r.photos.filter(p => p.kind === 'INSTALLATION');
+  %>
+    <div class="card">
+      <div class="flex items-center justify-between mb-2">
+        <span class="font-mono text-zinc-100"><%= r.serial %></span>
+        <span class="badge <%= statusBadgeClass(r.status) %>"><%= r.status %></span>
+      </div>
+      <div class="text-xs text-zinc-400 space-y-0.5 mb-3">
+        <p><span class="text-zinc-500">Tag:</span> <%= tagText %><% if (r.production_date) { %> · <span class="text-zinc-500">Produced</span> <%= r.production_date %><% } %></p>
+        <% if (r.installer_name) { %>
+          <p><span class="text-zinc-500">Installer:</span> <%= r.installer_name %> — <%= r.installer_company || '' %></p>
+          <p><span class="text-zinc-500">Site:</span> <%= r.site_name || '—' %> · <%= r.installation_date || '' %></p>
+        <% } %>
+        <% if (r.warranty_end) { %><p><span class="text-zinc-500">Warranty:</span> <%= r.warranty_start %> → <%= r.warranty_end %></p><% } %>
+      </div>
+
+      <% function thumbs(list, label){ %>
+        <% if (list.length) { %>
+          <p class="text-[11px] uppercase tracking-wide text-zinc-500 mb-1"><%= label %></p>
+          <div class="flex gap-2 mb-3">
+            <% list.forEach(p => { %>
+              <a href="/uploads/<%= p.file_path %>" target="_blank" title="<%= p.angle %>">
+                <img src="/uploads/<%= p.file_path %>" alt="<%= p.angle %>"
+                     class="w-14 h-14 rounded-lg object-cover border border-ink-600" />
+              </a>
+            <% }) %>
+          </div>
+        <% } %>
+      <% } %>
+      <%- thumbs(prod, 'Production photos') %>
+      <%- thumbs(inst, 'Installation photos') %>
+
+      <div class="flex gap-2 mt-1">
+        <a href="/admin/products/<%= r.serial %>" class="btn-ghost !py-2 !px-3 text-sm flex-1 !justify-center">View record</a>
+        <a href="/admin/products/<%= r.serial %>/bundle.zip" class="btn-ghost !py-2 !px-3 text-sm !justify-center">⬇ Bundle</a>
+      </div>
+    </div>
+  <% }) %>
+  <% if (rows.length === 0) { %><p class="text-zinc-600">No records found.</p><% } %>
+</div>
+<%- include('partials/foot') %>

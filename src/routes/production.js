@@ -8,6 +8,8 @@ import { getFullProduct, getProductBySerial } from '../lib/queries.js';
 import { PRODUCT_TAGS, ANGLES } from '../lib/constants.js';
 import { todayISO } from '../lib/warranty.js';
 import { UPLOAD_ROOT } from '../lib/config.js';
+import { writeLocalInfo } from '../lib/records.js';
+import { mirrorSerialAsync } from '../lib/cloud.js';
 
 // Production photos are stored with a `prod-` prefix so they never collide
 // with installation photos in the same product folder.
@@ -143,6 +145,10 @@ router.post('/p/:serial/production', requireRole('production'), (req, res) => {
     } catch (e) {
       return rerender('Could not save. This product may already be registered.');
     }
+
+    // Write the self-describing info file next to the photos + mirror to cloud.
+    writeLocalInfo(serial);
+    mirrorSerialAsync(serial);
 
     res.redirect(`/p/${serial}?notice=manufactured-ok`);
   });
