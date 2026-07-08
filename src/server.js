@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { db } from './db.js'; // initialise schema on boot
 import { currentUser, roleLanding } from './lib/auth.js';
-import { SESSION_SECRET, IS_PROD, PORT } from './lib/config.js';
+import { SESSION_SECRET, IS_PROD, PORT, DB_PATH, UPLOAD_ROOT, STORAGE_PERSISTENT } from './lib/config.js';
 import passport, { googleEnabled, appleEnabled } from './lib/passport.js';
 import { statusBadgeClass } from './lib/warranty.js';
 import authRoutes from './routes/auth.js';
@@ -16,6 +16,21 @@ import adminRoutes from './routes/admin.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
+
+// ---- Storage safety banner + guard (prevents silent data loss) ----
+console.log(
+  `Storage: db=${DB_PATH} · uploads=${UPLOAD_ROOT} · ` +
+  (STORAGE_PERSISTENT ? 'PERSISTENT VOLUME ✓' : 'EPHEMERAL DISK ⚠️')
+);
+if (IS_PROD && !STORAGE_PERSISTENT) {
+  console.error(
+    '\n!!! REFUSING TO START — production storage is on a TEMPORARY disk.\n' +
+    '!!! Data would be lost on the next deploy. Attach a persistent volume\n' +
+    '!!! (Railway sets RAILWAY_VOLUME_MOUNT_PATH) or set DB_PATH + UPLOAD_DIR\n' +
+    '!!! to an ABSOLUTE path on a persistent disk, then redeploy.\n'
+  );
+  process.exit(1);
+}
 
 // Behind a reverse proxy / load balancer in production so secure cookies and
 // req.protocol (used for QR BASE_URL fallback) work over HTTPS.

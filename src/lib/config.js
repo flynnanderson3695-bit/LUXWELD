@@ -1,7 +1,8 @@
 // Centralised runtime configuration (env-driven, deployment-friendly).
 // Dependency-free so any module can import it without cycles.
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync, statSync } from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url)); // src/lib
 const projectRoot = resolve(__dirname, '../..');
@@ -19,14 +20,36 @@ export const BASE_URL = process.env.BASE_URL || '';
 export const SESSION_SECRET =
   process.env.SESSION_SECRET || process.env.COOKIE_SECRET || 'dev-insecure-secret-change-me';
 
-// SQLite file path. DATABASE_URL accepted as an alias (treated as a file path
-// for this SQLite-backed MVP); DB_PATH also supported.
-export const DB_PATH =
-  process.env.DATABASE_URL || process.env.DB_PATH || resolve(projectRoot, 'data/app.db');
+// ---- Persistent storage resolution (data-loss safeguard) ----
+// A *relative* DB_PATH/UPLOAD_DIR (e.g. "./data/app.db") saves into the app's
+// code folder, which the host WIPES on every deploy — that once lost live data.
+// So we resolve storage in this order and ALWAYS prefer the persistent volume:
+//   1. an explicit ABSOLUTE override in DB_PATH/UPLOAD_DIR/DATABASE_URL
+//   2. the mounted volume (Railway sets RAILWAY_VOLUME_MOUNT_PATH; else /data)
+//   3. local ./data (development only)
+function detectVolume() {
+  const v = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.VOLUME_MOUNT_PATH;
+  if (v && isAbsolute(v)) return v;
+  try {
+    // Railway's default mount point; only trust it in production.
+    if (IS_PROD && existsSync('/data') && statSync('/data').isDirectory()) return '/data';
+  } catch {}
+  return '';
+}
+const VOLUME = detectVolume();
 
-// Where uploaded photos are stored. Must be a persistent volume in production.
-export const UPLOAD_ROOT =
-  process.env.UPLOAD_DIR || process.env.UPLOAD_ROOT || resolve(projectRoot, 'data/uploads');
+function resolveStorage(envValue, name) {
+  if (envValue && isAbsolute(envValue)) return envValue; // explicit absolute override wins
+  if (VOLUME) return resolve(VOLUME, name);              // persistent volume (ignores relative env)
+  return resolve(projectRoot, 'data', name);            // dev fallback
+}
+
+export const DB_PATH = resolveStorage(process.env.DATABASE_URL || process.env.DB_PATH, 'app.db');
+export const UPLOAD_ROOT = resolveStorage(process.env.UPLOAD_DIR || process.env.UPLOAD_ROOT, 'uploads');
+
+// True when storage lives on a persistent volume (or an explicit absolute path).
+export const STORAGE_PERSISTENT =
+  Boolean(VOLUME) || isAbsolute(process.env.DB_PATH || process.env.DATABASE_URL || '');
 
 // Cookie options, hardened automatically in production (HTTPS-only).
 export function sessionCookieOptions() {
