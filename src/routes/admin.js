@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { resolve } from 'node:path';
-import { existsSync } from 'node:fs';
+import { resolve, join } from 'node:path';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import archiver from 'archiver';
 import QRCode from 'qrcode';
 import { stringify } from 'csv-stringify/sync';
@@ -16,6 +17,7 @@ import { PRODUCT_TAGS } from '../lib/constants.js';
 import { UPLOAD_ROOT, BASE_URL, CLOUD_BUCKET } from '../lib/config.js';
 import { recordInfo, recordText, writeLocalInfo } from '../lib/records.js';
 import { cloudEnabled, mirrorSerialAsync, syncAll, backupDatabase } from '../lib/cloud.js';
+import { buildArchiveSite } from '../lib/archive-site.js';
 
 const serialId = customAlphabet('0123456789ABCDEFGHJKLMNPQRSTUVWXYZ', 8);
 const tokenId = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 16);
@@ -302,6 +304,26 @@ router.get('/admin/products/:serial/bundle.zip', requireRole('admin'), (req, res
 router.get('/admin/archive.zip', requireRole('admin'), (req, res) => {
   const rows = listProducts({ q: req.query.q || '', filter: req.query.filter || '' });
   streamBundle(res, rows.map((r) => r.serial), `luxweld-archive-${Date.now()}.zip`);
+});
+
+// Download the full standalone LUXWELD-styled archive WEBSITE (open index.html).
+router.get('/admin/archive-site.zip', requireRole('admin'), (req, res) => {
+  let dir;
+  try {
+    dir = mkdtempSync(join(tmpdir(), 'lux-site-'));
+    buildArchiveSite(dir);
+  } catch (e) {
+    console.error('archive-site build failed:', e);
+    return res.status(500).end();
+  }
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="luxweld-archive-site-${Date.now()}.zip"`);
+  const archive = archiver('zip', { zlib: { level: 6 } });
+  archive.on('error', (e) => { console.error('zip error:', e); try { res.status(500).end(); } catch {} });
+  archive.on('close', () => { try { rmSync(dir, { recursive: true, force: true }); } catch {} });
+  archive.pipe(res);
+  archive.directory(dir, false);
+  archive.finalize();
 });
 
 // ---- Cloud mirror actions ----

@@ -203,6 +203,12 @@ async function run() {
   const sync = await fetch(`${BASE}/admin/cloud/sync`, { method: 'POST', headers: { cookie: admin.cookie }, redirect: 'manual' });
   ok('cloud sync gracefully disabled when unconfigured', sync.status === 302 && /cloud-disabled/.test(sync.headers.get('location') || ''));
 
+  // --- standalone archive website ---
+  ok('archive website rebuilt on boot', existsSync(join(tmp, 'archive-site', 'index.html')));
+  const site = await fetch(`${BASE}/admin/archive-site.zip`, { headers: { cookie: admin.cookie } });
+  const sbuf = Buffer.from(await site.arrayBuffer());
+  ok('archive-site.zip download is a zip', site.status === 200 && sbuf.slice(0, 2).toString() === 'PK');
+
   // --- Cloud / PWA / app endpoints ---
   const health = await fetch(`${BASE}/health`);
   ok('/health returns ok', health.status === 200 && /"status":"ok"/.test(await health.text()));

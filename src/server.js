@@ -9,6 +9,7 @@ import { currentUser, roleLanding } from './lib/auth.js';
 import { SESSION_SECRET, IS_PROD, PORT, DB_PATH, UPLOAD_ROOT, STORAGE_PERSISTENT } from './lib/config.js';
 import passport, { googleEnabled, appleEnabled } from './lib/passport.js';
 import { statusBadgeClass } from './lib/warranty.js';
+import { buildArchiveSite } from './lib/archive-site.js';
 import authRoutes from './routes/auth.js';
 import publicRoutes from './routes/public.js';
 import productionRoutes from './routes/production.js';
@@ -102,6 +103,20 @@ app.use((err, req, res, _next) => {
   res.status(500).render('error', { message: 'Something went wrong. Please try again.' });
 });
 
+// Rebuild the standalone LUXWELD archive site daily (a second, self-contained,
+// browsable copy of every record + photos, kept on the persistent volume).
+function rebuildArchiveSite() {
+  try {
+    const out = resolve(UPLOAD_ROOT, '..', 'archive-site');
+    const r = buildArchiveSite(out);
+    console.log(`Archive site rebuilt at ${out} (${r.records} records, ${r.photos} photos).`);
+  } catch (e) {
+    console.warn('Archive site rebuild failed:', e.message);
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`LUXWELD Warranty running at http://localhost:${PORT}`);
+  rebuildArchiveSite();
+  setInterval(rebuildArchiveSite, 24 * 60 * 60 * 1000).unref();
 });

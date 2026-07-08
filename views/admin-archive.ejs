@@ -4,8 +4,11 @@
     <h1 class="text-2xl font-semibold text-zinc-100">Records archive</h1>
     <p class="text-sm text-zinc-500">Every warranty with its photos and all the info together.</p>
   </div>
-  <a href="/admin/archive.zip<%= q||filter ? '?' + (q?'q='+encodeURIComponent(q):'') + (filter?'&filter='+filter:'') : '' %>"
-     class="btn-gold !py-2.5 !px-4 text-sm">⬇ Download full archive (.zip)</a>
+  <div class="flex gap-2 shrink-0">
+    <a href="/admin/archive-site.zip" class="btn-gold !py-2.5 !px-4 text-sm">⬇ Download archive website</a>
+    <a href="/admin/archive.zip<%= q||filter ? '?' + (q?'q='+encodeURIComponent(q):'') + (filter?'&filter='+filter:'') : '' %>"
+       class="btn-ghost !py-2.5 !px-4 text-sm">Records + photos (.zip)</a>
+  </div>
 </div>
 
 <!-- Cloud status panel -->

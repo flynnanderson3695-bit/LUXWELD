@@ -8,6 +8,12 @@
       "port": 3000
     },
     {
+      "name": "archive-site",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4610", "--directory", "data/archive-site"],
+      "port": 4610
+    },
+    {
       "name": "mobile-shell",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "4599", "--directory", "mobile/www"],
