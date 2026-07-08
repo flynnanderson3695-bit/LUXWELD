@@ -10,6 +10,7 @@ import { SESSION_SECRET, IS_PROD, PORT, DB_PATH, UPLOAD_ROOT, STORAGE_PERSISTENT
 import passport, { googleEnabled, appleEnabled } from './lib/passport.js';
 import { statusBadgeClass } from './lib/warranty.js';
 import { buildArchiveSite } from './lib/archive-site.js';
+import { backupToDrive, driveStatus } from './lib/drive.js';
 import authRoutes from './routes/auth.js';
 import publicRoutes from './routes/public.js';
 import productionRoutes from './routes/production.js';
@@ -115,8 +116,17 @@ function rebuildArchiveSite() {
   }
 }
 
+// Daily: rebuild the local archive site AND (if connected) push it to Drive.
+async function dailyTasks() {
+  rebuildArchiveSite();
+  if (driveStatus().connected) {
+    const r = await backupToDrive();
+    console.log('Daily Drive backup:', r.ok ? `uploaded ${r.name}` : `FAILED — ${r.error}`);
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`LUXWELD Warranty running at http://localhost:${PORT}`);
-  rebuildArchiveSite();
-  setInterval(rebuildArchiveSite, 24 * 60 * 60 * 1000).unref();
+  rebuildArchiveSite(); // local copy on boot (no upload)
+  setInterval(dailyTasks, 24 * 60 * 60 * 1000).unref();
 });

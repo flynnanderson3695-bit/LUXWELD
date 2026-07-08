@@ -102,6 +102,12 @@ export const GOOGLE_CALLBACK_URL =
   process.env.GOOGLE_CALLBACK_URL || (BASE_URL ? `${BASE_URL}/auth/google/callback` : '');
 export const GOOGLE_ENABLED = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 
+// ---- Google Drive automatic backup (reuses the Google client credentials) ----
+export const DRIVE_CONFIGURED = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+export const DRIVE_CALLBACK_URL =
+  process.env.DRIVE_CALLBACK_URL || (BASE_URL ? `${BASE_URL}/admin/drive/callback` : '');
+export const DRIVE_FOLDER_NAME = process.env.DRIVE_FOLDER_NAME || 'LUXWELD Warranty Archive';
+
 // ---- Apple OAuth (Sign in with Apple) ----
 export const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID || ''; // Services ID
 export const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID || '';

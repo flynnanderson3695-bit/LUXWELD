@@ -11,6 +11,34 @@
   </div>
 </div>
 
+<!-- Google Drive automatic backup -->
+<div class="card mb-4 <%= drive.connected ? '!border-emerald-500/30' : drive.configured ? '!border-amber-500/30' : '!border-ink-600' %>">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="text-sm">
+      <% if (drive.connected) { %>
+        <span class="badge bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30 mr-2">Google Drive backup ON</span>
+        <span class="text-zinc-400">Uploads the full archive daily to <span class="text-zinc-200"><%= drive.email || 'the connected Drive' %></span> → folder “LUXWELD Warranty Archive”.<% if (drive.lastBackup) { %> Last backup <%= drive.lastBackup.slice(0,16).replace('T',' ') %> UTC.<% } %></span>
+      <% } else if (drive.configured) { %>
+        <span class="badge bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30 mr-2">Google Drive OFF</span>
+        <span class="text-zinc-400">Connect the CEO’s Google account once and the archive auto‑uploads to his Drive every day.</span>
+      <% } else { %>
+        <span class="badge bg-zinc-500/15 text-zinc-300 ring-1 ring-zinc-500/30 mr-2">Not set up</span>
+        <span class="text-zinc-400">Add the Google credentials to enable automatic Drive backup (see README → Google Drive backup).</span>
+      <% } %>
+    </div>
+    <div class="flex gap-2 shrink-0">
+      <% if (drive.connected) { %>
+        <form method="post" action="/admin/drive/backup-now"><button class="btn-gold !py-2 !px-3 text-sm">Back up now</button></form>
+        <form method="post" action="/admin/drive/disconnect" onsubmit="return confirm('Disconnect Google Drive backup?');"><button class="btn-ghost !py-2 !px-3 text-sm">Disconnect</button></form>
+      <% } else if (drive.configured) { %>
+        <a href="/admin/drive/connect" class="btn-gold !py-2 !px-3 text-sm">Connect Google Drive</a>
+      <% } %>
+    </div>
+  </div>
+  <% if (driveMsg) { %><p class="text-xs mt-2 <%= /fail|error|cancel/i.test(driveMsg) ? 'text-red-300' : 'text-emerald-300' %>">Result: <%= driveMsg %></p><% } %>
+  <% if (drive.lastStatus) { %><p class="text-xs text-zinc-500 mt-1">Last run: <%= drive.lastStatus %></p><% } %>
+</div>
+
 <!-- Cloud status panel -->
 <div class="card mb-4 <%= cloudEnabled ? '!border-emerald-500/30' : '!border-amber-500/30' %>">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

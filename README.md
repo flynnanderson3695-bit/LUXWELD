@@ -88,6 +88,23 @@ plus production users `mike`/`mike123`, `sara`/`sara123` for local testing.
 5. Copy the Client ID + Secret into `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
    The button appears automatically once both are set.
 
+## Google Drive backup (automatic, admin-only)
+
+Uploads the full archive (all info + photos, zipped) to the admin's Google Drive
+every day, into a **“LUXWELD Warranty Archive”** folder. Reuses the same Google
+credentials as login, plus one extra redirect URI.
+
+1. Create the Google OAuth client as above (or reuse the login one). On the
+   **OAuth consent screen**, set publishing status to **In production** and add
+   the scope `.../auth/drive.file` (so refresh tokens don't expire), then add the
+   admin as a user.
+2. Add an **Authorised redirect URI**: `https://warranty.luxweld.com.au/admin/drive/callback`.
+3. Set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (+ `BASE_URL`) in Railway.
+4. In the app: **Archive → Connect Google Drive**, sign in as the CEO, approve.
+5. Click **Back up now** to confirm a zip lands in his Drive; after that it runs
+   **daily automatically**. The panel shows the last run + any error (no silent
+   failures).
+
 ## Apple OAuth setup (optional)
 
 Requires an **Apple Developer account** ($99/yr). If you don't have one yet, leave

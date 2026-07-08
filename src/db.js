@@ -26,6 +26,20 @@ export function tx(fn) {
 
 const SCHEMA_VERSION = 4;
 
+// Small key/value store (Drive connection tokens, etc.). Created via
+// CREATE TABLE IF NOT EXISTS so it needs no schema-version bump.
+export function getSetting(key) {
+  return db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key)?.value ?? null;
+}
+export function setSetting(key, value) {
+  db.prepare(
+    'INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+  ).run(key, value);
+}
+export function deleteSetting(key) {
+  db.prepare('DELETE FROM app_settings WHERE key = ?').run(key);
+}
+
 function tableExists(name) {
   return Boolean(
     db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(name)
@@ -75,6 +89,11 @@ function createBaseTables() {
     );
 
     CREATE INDEX IF NOT EXISTS idx_product_status ON product(status);
+
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
   `);
 }
 

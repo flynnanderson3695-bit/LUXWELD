@@ -18,6 +18,8 @@ import { UPLOAD_ROOT, BASE_URL, CLOUD_BUCKET } from '../lib/config.js';
 import { recordInfo, recordText, writeLocalInfo } from '../lib/records.js';
 import { cloudEnabled, mirrorSerialAsync, syncAll, backupDatabase } from '../lib/cloud.js';
 import { buildArchiveSite } from '../lib/archive-site.js';
+import { driveStatus, buildAuthUrl, connectWithCode, backupToDrive, disconnectDrive } from '../lib/drive.js';
+import { DRIVE_CONFIGURED } from '../lib/config.js';
 
 const serialId = customAlphabet('0123456789ABCDEFGHJKLMNPQRSTUVWXYZ', 8);
 const tokenId = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 16);
@@ -271,7 +273,35 @@ router.get('/admin/archive', requireRole('admin'), (req, res) => {
     rows, q, filter, baseUrl: baseUrl(req),
     cloudEnabled, cloudBucket: CLOUD_BUCKET,
     synced: req.query.synced || null,
+    drive: driveStatus(),
+    driveMsg: req.query.drive || null,
   });
+});
+
+// ---- Google Drive automatic backup ----
+router.get('/admin/drive/connect', requireRole('admin'), (req, res) => {
+  if (!DRIVE_CONFIGURED) return res.redirect('/admin/archive?drive=not-configured');
+  res.redirect(buildAuthUrl());
+});
+
+router.get('/admin/drive/callback', requireRole('admin'), async (req, res) => {
+  if (!req.query.code) return res.redirect('/admin/archive?drive=cancelled');
+  try {
+    await connectWithCode(req.query.code);
+    res.redirect('/admin/archive?drive=connected');
+  } catch (e) {
+    res.redirect('/admin/archive?drive=' + encodeURIComponent('error: ' + e.message));
+  }
+});
+
+router.post('/admin/drive/backup-now', requireRole('admin'), async (req, res) => {
+  const r = await backupToDrive();
+  res.redirect('/admin/archive?drive=' + encodeURIComponent(r.ok ? 'backed up ' + r.name : 'failed: ' + r.error));
+});
+
+router.post('/admin/drive/disconnect', requireRole('admin'), (req, res) => {
+  disconnectDrive();
+  res.redirect('/admin/archive?drive=disconnected');
 });
 
 // Stream a zip where each serial is a self-describing folder (photos + info).
