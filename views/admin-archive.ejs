@@ -5,10 +5,28 @@
     <p class="text-sm text-zinc-500">Every warranty with its photos and all the info together.</p>
   </div>
   <div class="flex gap-2 shrink-0">
-    <a href="/admin/archive-site.zip" class="btn-gold !py-2.5 !px-4 text-sm">⬇ Download archive website</a>
     <a href="/admin/archive.zip<%= q||filter ? '?' + (q?'q='+encodeURIComponent(q):'') + (filter?'&filter='+filter:'') : '' %>"
        class="btn-ghost !py-2.5 !px-4 text-sm">Records + photos (.zip)</a>
   </div>
+</div>
+
+<!-- Physical / offline backup — copy one file onto an external hard drive -->
+<div class="card mb-4 !border-gold-500/40">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="text-sm">
+      <span class="badge bg-gold-500/15 text-gold-300 ring-1 ring-gold-500/30 mr-2">Physical backup</span>
+      <span class="text-zinc-400">One file with every record, photo and warranty, as a self-contained website. Save it, then copy it onto an external hard drive. It opens offline on any computer — no internet, no login.</span>
+    </div>
+    <div class="shrink-0">
+      <a href="/admin/archive-site.zip" class="btn-gold !py-3 !px-5 whitespace-nowrap">⬇ Download everything (.zip)</a>
+    </div>
+  </div>
+  <ol class="text-xs text-zinc-500 mt-3 list-decimal list-inside space-y-0.5">
+    <li>Plug in your external hard drive.</li>
+    <li>Click <span class="text-gold-300">Download everything</span> above and save the <span class="font-mono">.zip</span>.</li>
+    <li>Copy that <span class="font-mono">.zip</span> onto the hard drive (keep at least the last few, e.g. one per month).</li>
+    <li>To view it later: unzip the file and open <span class="font-mono text-zinc-300">index.html</span> in any browser.</li>
+  </ol>
 </div>
 
 <!-- Google Drive automatic backup -->
