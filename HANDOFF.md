@@ -166,21 +166,37 @@ Optional: `ADMIN_EMAILS`, `PRODUCTION_EMAILS`, `GOOGLE_CLIENT_ID`,
 self-describing storage · `b68c59f` real auth (Google/Apple + 4 roles) ·
 `0c35822` Railway-ready.
 
+## Railway access & config state (2026-07-09)
+Railway CLI installed + logged in as `flynn.anderson3695@gmail.com` on Flynn's
+machine (project **gracious-curiosity**, service **LUXWELD**, env production,
+linked in the repo dir). ⚠️ Use PowerShell (not Git Bash) for `railway variable
+set` with path values — MSYS mangles leading-slash args. `--skip-deploys` stages
+vars for the next deploy (batch changes = fewer deploy blips/emails).
+Vars corrected this session: `BASE_URL` → `https://warranty.luxweld.com.au` (was
+the `.up.railway.app` domain — QR links + OAuth callbacks derive from it!),
+`DB_PATH`/`UPLOAD_DIR` → absolute `/data/...`, `DATABASE_URL` → `/data/app.db`
+(was a website URL; ideally delete it someday — delete has no --skip-deploys).
+`RESET_ADMIN_PASSWORD=0` is STAGED, applies on next deploy (closes the hatch).
+💰 Credits emergency: free plan, ~$3 left — Flynn is upgrading to Hobby (site
+stops at $0). Billing can't be done via CLI.
+
 ## 🚧 OPEN ITEMS (do these next)
-1. **✅ LOGIN recovery path SHIPPED (commit `a5974a5`).** Root cause: `seedUsers()`
+1. **✅ LOGIN FIXED & VERIFIED LIVE (2026-07-09).** Root cause: `seedUsers()`
    only runs on an empty users table, so `ADMIN_PASSWORD` changes couldn't reset
-   the locked-out admin (the app itself was healthy — `/health` ok, `/` 302). Fix:
-   `RESET_ADMIN_PASSWORD=1` env resets the `ADMIN_EMAIL` account on boot (proven
-   across 3 simulated redeploys). **Remaining = Railway action only:** set
-   `ADMIN_EMAIL=jono@luxweld.com.au`, `ADMIN_PASSWORD=<temp>`, `RESET_ADMIN_PASSWORD=1`,
-   redeploy, Jono logs in + sets his own password via **Users**, then DELETE
-   `RESET_ADMIN_PASSWORD`. Full steps in `BACKUP-AND-RECOVERY.md` → Emergency.
-2. **PHYSICAL + CLOUD backup.** Physical = ✅ SHIPPED (commit `8af5eed`): a
-   prominent gold **"Physical backup"** panel at the top of `/admin/archive` with
-   a one-click **⬇ Download everything (.zip)** button + 4-step instructions +
-   monthly SOP in `BACKUP-AND-RECOVERY.md`. Cloud = **Google Drive** (chosen over
-   R2) — see item 3; R2 remains available but off.
-3. **Google Drive backup — finish setup.** App side is DONE. Needs a one-time
+   the locked-out admin. Fix `RESET_ADMIN_PASSWORD=1` (commit `a5974a5`) ran in
+   production: deploy logs show the reset line; live POST /login as
+   `jono@luxweld.com.au` returned 302 → /admin. Jono has a temp password (given
+   to Flynn) and must set his own via **Users**. Hatch already staged closed.
+2. **PHYSICAL + CLOUD backup — design settled, cloud shipped.** Cloud = Google
+   Drive **searchable per-record folder mirror** (commit `0989663`, DEPLOYED):
+   instant push after each registration + daily staleness check + DB snapshot;
+   Jono searches Drive itself (serial/installer/site/date in folder names,
+   record.txt full-text-indexed). Physical = **Google Drive for desktop relay**
+   on a 24/7 PC mirroring to a big external drive (Flynn's choice over a custom
+   agent) — setup steps in `BACKUP-AND-RECOVERY.md`. Manual gold "Physical
+   backup" panel on `/admin/archive` (commit `8af5eed`) remains as a snapshot
+   option. R2 mirror still available but off.
+3. **Google Drive backup — finish setup.** App side is DONE + DEPLOYED. Needs a one-time
    Google Cloud OAuth client (free): enable Drive API, OAuth consent screen
    (External, **Publish to production**, add scope `.../auth/drive.file`), add
    redirect URI `https://warranty.luxweld.com.au/admin/drive/callback`, set
