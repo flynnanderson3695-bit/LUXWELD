@@ -82,6 +82,16 @@ export const CLOUD_ENABLED = Boolean(
 export const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@luxweld.local').toLowerCase();
 export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || (IS_PROD ? '' : 'admin123');
 
+// ---- Admin password recovery (lock-out escape hatch) ----
+// seedUsers() only runs on an EMPTY users table, so once an admin exists,
+// changing ADMIN_PASSWORD does nothing. If the admin is locked out, set
+// RESET_ADMIN_PASSWORD=1 (+ a known ADMIN_PASSWORD) and redeploy: on boot the
+// ADMIN_EMAIL account's password + admin role are reset (account created if it
+// doesn't exist). UNSET RESET_ADMIN_PASSWORD afterwards so it can't re-fire.
+export const RESET_ADMIN_PASSWORD = /^(1|true|yes|on)$/i.test(
+  (process.env.RESET_ADMIN_PASSWORD || '').trim()
+);
+
 // ---- Role allowlists (comma-separated emails) ----
 // Emails here are auto-assigned on first OAuth/local sign-in. Roles are still
 // stored in (and can be overridden from) the database — the provider is never

@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { hashPassword } from './lib/password.js';
-import { DB_PATH, ADMIN_EMAIL, ADMIN_PASSWORD, IS_PROD } from './lib/config.js';
+import { DB_PATH, ADMIN_EMAIL, ADMIN_PASSWORD, IS_PROD, RESET_ADMIN_PASSWORD } from './lib/config.js';
 
 mkdirSync(dirname(DB_PATH), { recursive: true });
 
@@ -286,6 +286,42 @@ function seedUsers() {
   }
 }
 
+// Lock-out escape hatch. When RESET_ADMIN_PASSWORD is set, force the ADMIN_EMAIL
+// account's password (and admin role / active flag) to ADMIN_PASSWORD, creating
+// the account if it doesn't exist. Unlike seedUsers() this runs even when users
+// already exist, so it's the recovery path for a locked-out admin. It is
+// idempotent; unset the env var afterwards so it can't silently re-fire.
+function applyAdminReset() {
+  if (!RESET_ADMIN_PASSWORD) return;
+  if (!ADMIN_PASSWORD) {
+    console.warn(
+      '!! RESET_ADMIN_PASSWORD is set but ADMIN_PASSWORD is empty — nothing to do.\n' +
+      '!! Set ADMIN_PASSWORD to the desired password and redeploy.'
+    );
+    return;
+  }
+  const existing = db.prepare('SELECT id FROM users WHERE lower(email) = lower(?)').get(ADMIN_EMAIL);
+  if (existing) {
+    db.prepare(
+      "UPDATE users SET password_hash = ?, role = 'admin', active = 1 WHERE id = ?"
+    ).run(hashPassword(ADMIN_PASSWORD), existing.id);
+    console.log(
+      `RESET_ADMIN_PASSWORD: reset password + admin role for ${ADMIN_EMAIL}. ` +
+      'Log in, then UNSET RESET_ADMIN_PASSWORD in the environment.'
+    );
+  } else {
+    // Avoid colliding with an existing username='admin' (UNIQUE).
+    const usernameTaken = db.prepare("SELECT 1 FROM users WHERE username = 'admin'").get();
+    db.prepare(
+      'INSERT INTO users (name, username, email, role, password_hash, provider) VALUES (?,?,?,?,?,?)'
+    ).run('Administrator', usernameTaken ? null : 'admin', ADMIN_EMAIL, 'admin', hashPassword(ADMIN_PASSWORD), 'local');
+    console.log(
+      `RESET_ADMIN_PASSWORD: created admin account ${ADMIN_EMAIL}. ` +
+      'Log in, then UNSET RESET_ADMIN_PASSWORD in the environment.'
+    );
+  }
+}
+
 // ---- Boot: create or migrate, then seed users ----
 const freshDb = !tableExists('product');
 createBaseTables();
@@ -306,3 +342,4 @@ if (freshDb) {
 }
 
 seedUsers();
+applyAdminReset();
