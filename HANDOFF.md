@@ -140,6 +140,10 @@ Required/used: `NODE_ENV=production`, `BASE_URL=https://warranty.luxweld.com.au`
 `SESSION_SECRET` (or legacy `COOKIE_SECRET`), `DB_PATH` (should be `/data/app.db`),
 `UPLOAD_DIR` (should be `/data/uploads`), `ADMIN_EMAIL=jono@luxweld.com.au`,
 `ADMIN_PASSWORD`. Railway injects `RAILWAY_VOLUME_MOUNT_PATH=/data` and `PORT`.
+Recovery: `RESET_ADMIN_PASSWORD=1` — on boot, forces the `ADMIN_EMAIL` account's
+password to `ADMIN_PASSWORD` + admin role (creates it if missing). The escape
+hatch for a locked-out admin. **Unset it after use** (it re-fires every deploy
+while set). Inert unless set. Added in commit `a5974a5`.
 Optional: `ADMIN_EMAILS`, `PRODUCTION_EMAILS`, `GOOGLE_CLIENT_ID`,
 `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL`, `APPLE_*`, `R2_ENDPOINT`/`R2_BUCKET`/
 `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY` (or `S3_*`), `CLOUD_PREFIX`,
@@ -163,24 +167,19 @@ self-describing storage · `b68c59f` real auth (Google/Apple + 4 roles) ·
 `0c35822` Railway-ready.
 
 ## 🚧 OPEN ITEMS (do these next)
-1. **🔴 LOGIN IS BROKEN (urgent).** The CEO can't log in. Likely causes to check,
-   in order: (a) the latest Railway deploy may have **crashed** — check
-   Deployments is green + Deploy Logs show `Storage: db=/data/app.db … PERSISTENT
-   VOLUME ✓` and `LUXWELD Warranty running`; (b) after the storage fix the app
-   reads the (empty) volume DB and **re-seeded** the admin as `jono@luxweld.com.au`
-   with the password in Railway's `ADMIN_PASSWORD` — try logging in with THAT
-   email + that exact password (not admin/admin123); (c) if the password is
-   unknown, note that changing `ADMIN_PASSWORD` won't reset an existing admin
-   (seed only runs on empty table) — **build a recovery path**: e.g. honor a
-   `RESET_ADMIN_PASSWORD=1` env that, on boot, resets the `ADMIN_EMAIL` user's
-   password to `ADMIN_PASSWORD` (then they unset it), or a one-off admin-reset
-   script. Investigate live before assuming.
-2. **CEO wants PHYSICAL DRIVE backups + a cloud system (both).** Physical =
-   a simple routine/SOP: admin clicks **Download archive website** (or
-   `archive.zip`) → copy to an external hard drive (and/or scheduled reminder).
-   Cloud = finish **Google Drive** auto-backup (see below) and/or turn on R2.
-   Consider a one-click "download everything for offline/physical backup" that's
-   obvious, plus written instructions Jono can follow.
+1. **✅ LOGIN recovery path SHIPPED (commit `a5974a5`).** Root cause: `seedUsers()`
+   only runs on an empty users table, so `ADMIN_PASSWORD` changes couldn't reset
+   the locked-out admin (the app itself was healthy — `/health` ok, `/` 302). Fix:
+   `RESET_ADMIN_PASSWORD=1` env resets the `ADMIN_EMAIL` account on boot (proven
+   across 3 simulated redeploys). **Remaining = Railway action only:** set
+   `ADMIN_EMAIL=jono@luxweld.com.au`, `ADMIN_PASSWORD=<temp>`, `RESET_ADMIN_PASSWORD=1`,
+   redeploy, Jono logs in + sets his own password via **Users**, then DELETE
+   `RESET_ADMIN_PASSWORD`. Full steps in `BACKUP-AND-RECOVERY.md` → Emergency.
+2. **PHYSICAL + CLOUD backup.** Physical = ✅ SHIPPED (commit `8af5eed`): a
+   prominent gold **"Physical backup"** panel at the top of `/admin/archive` with
+   a one-click **⬇ Download everything (.zip)** button + 4-step instructions +
+   monthly SOP in `BACKUP-AND-RECOVERY.md`. Cloud = **Google Drive** (chosen over
+   R2) — see item 3; R2 remains available but off.
 3. **Google Drive backup — finish setup.** App side is DONE. Needs a one-time
    Google Cloud OAuth client (free): enable Drive API, OAuth consent screen
    (External, **Publish to production**, add scope `.../auth/drive.file`), add
