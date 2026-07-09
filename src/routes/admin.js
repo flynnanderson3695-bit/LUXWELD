@@ -18,7 +18,10 @@ import { UPLOAD_ROOT, BASE_URL, CLOUD_BUCKET } from '../lib/config.js';
 import { recordInfo, recordText, writeLocalInfo } from '../lib/records.js';
 import { cloudEnabled, mirrorSerialAsync, syncAll, backupDatabase } from '../lib/cloud.js';
 import { buildArchiveSite } from '../lib/archive-site.js';
-import { driveStatus, buildAuthUrl, connectWithCode, backupToDrive, disconnectDrive } from '../lib/drive.js';
+import {
+  driveStatus, buildAuthUrl, connectWithCode, backupToDrive, disconnectDrive,
+  mirrorSerialToDriveAsync,
+} from '../lib/drive.js';
 import { DRIVE_CONFIGURED } from '../lib/config.js';
 
 const serialId = customAlphabet('0123456789ABCDEFGHJKLMNPQRSTUVWXYZ', 8);
@@ -153,6 +156,7 @@ router.post('/admin/products/:serial/edit', requireRole('admin'), (req, res) => 
   // Refresh the self-describing info + cloud mirror after an admin correction.
   writeLocalInfo(product.serial);
   mirrorSerialAsync(product.serial);
+  mirrorSerialToDriveAsync(product.serial);
 
   res.redirect(`/admin/products/${product.serial}?saved=1`);
 });
@@ -170,6 +174,7 @@ router.post('/admin/products/:serial/reset-installation', requireRole('admin'), 
   });
   writeLocalInfo(product.serial);
   mirrorSerialAsync(product.serial);
+  mirrorSerialToDriveAsync(product.serial);
   res.redirect(`/admin/products/${product.serial}?saved=1`);
 });
 
@@ -288,15 +293,22 @@ router.get('/admin/drive/callback', requireRole('admin'), async (req, res) => {
   if (!req.query.code) return res.redirect('/admin/archive?drive=cancelled');
   try {
     await connectWithCode(req.query.code);
-    res.redirect('/admin/archive?drive=connected');
+    // Kick off the first full upload in the background — one click does it all.
+    backupToDrive().then(
+      (r) => console.log('Initial Drive backup:', r.ok ? `OK — ${r.uploaded} uploaded of ${r.checked}` : `FAILED — ${r.error}`),
+      (e) => console.warn('Initial Drive backup failed:', e.message)
+    );
+    res.redirect('/admin/archive?drive=' + encodeURIComponent('connected — first full backup is uploading now (refresh in a few minutes)'));
   } catch (e) {
     res.redirect('/admin/archive?drive=' + encodeURIComponent('error: ' + e.message));
   }
 });
 
 router.post('/admin/drive/backup-now', requireRole('admin'), async (req, res) => {
-  const r = await backupToDrive();
-  res.redirect('/admin/archive?drive=' + encodeURIComponent(r.ok ? 'backed up ' + r.name : 'failed: ' + r.error));
+  const r = await backupToDrive({ force: true });
+  res.redirect('/admin/archive?drive=' + encodeURIComponent(
+    r.ok ? `backed up — ${r.uploaded} updated of ${r.checked} records` : 'failed: ' + r.error
+  ));
 });
 
 router.post('/admin/drive/disconnect', requireRole('admin'), (req, res) => {

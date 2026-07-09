@@ -106,7 +106,10 @@ app.use((err, req, res, _next) => {
 
 // Rebuild the standalone LUXWELD archive site daily (a second, self-contained,
 // browsable copy of every record + photos, kept on the persistent volume).
+const DAY = 24 * 60 * 60 * 1000;
+let lastArchiveBuild = 0;
 function rebuildArchiveSite() {
+  lastArchiveBuild = Date.now();
   try {
     const out = resolve(UPLOAD_ROOT, '..', 'archive-site');
     const r = buildArchiveSite(out);
@@ -116,17 +119,31 @@ function rebuildArchiveSite() {
   }
 }
 
-// Daily: rebuild the local archive site AND (if connected) push it to Drive.
-async function dailyTasks() {
-  rebuildArchiveSite();
-  if (driveStatus().connected) {
-    const r = await backupToDrive();
-    console.log('Daily Drive backup:', r.ok ? `uploaded ${r.name}` : `FAILED — ${r.error}`);
+// Hourly maintenance with STALENESS checks. (A plain 24h setInterval resets on
+// every deploy, so if the app redeploys more often than daily the "daily"
+// backup never fires. Drive staleness is tracked in the DB, so it survives
+// restarts and catches up a missed backup within a minute of boot.)
+async function maintenanceTick() {
+  try {
+    if (Date.now() - lastArchiveBuild > DAY) rebuildArchiveSite();
+    const st = driveStatus();
+    if (st.connected) {
+      const last = Date.parse(st.lastBackup || '') || 0;
+      if (Date.now() - last > DAY) {
+        const r = await backupToDrive();
+        console.log('Daily Drive backup:', r.ok
+          ? `OK — ${r.uploaded} uploaded of ${r.checked} checked`
+          : `FAILED — ${r.error}`);
+      }
+    }
+  } catch (e) {
+    console.warn('Maintenance tick failed:', e.message);
   }
 }
 
 app.listen(PORT, () => {
   console.log(`LUXWELD Warranty running at http://localhost:${PORT}`);
   rebuildArchiveSite(); // local copy on boot (no upload)
-  setInterval(dailyTasks, 24 * 60 * 60 * 1000).unref();
+  setTimeout(maintenanceTick, 60 * 1000).unref(); // catch-up pass shortly after boot
+  setInterval(maintenanceTick, 60 * 60 * 1000).unref(); // then hourly
 });

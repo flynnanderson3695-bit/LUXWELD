@@ -10,6 +10,7 @@ import { UPLOAD_ROOT } from '../lib/config.js';
 import { currentUser } from '../lib/auth.js';
 import { writeLocalInfo } from '../lib/records.js';
 import { mirrorSerialAsync } from '../lib/cloud.js';
+import { mirrorSerialToDriveAsync } from '../lib/drive.js';
 
 const VALID_SOURCES = ['web', 'pwa', 'android', 'ios'];
 
@@ -162,6 +163,7 @@ router.post('/p/:serial/install', (req, res) => {
     // Write the self-describing info file next to the photos + mirror to cloud.
     writeLocalInfo(serial);
     mirrorSerialAsync(serial);
+    mirrorSerialToDriveAsync(serial);
 
     res.redirect(`/p/${serial}?notice=installed-ok`);
   });

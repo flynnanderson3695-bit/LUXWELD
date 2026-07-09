@@ -35,10 +35,10 @@
     <div class="text-sm">
       <% if (drive.connected) { %>
         <span class="badge bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30 mr-2">Google Drive backup ON</span>
-        <span class="text-zinc-400">Uploads the full archive daily to <span class="text-zinc-200"><%= drive.email || 'the connected Drive' %></span> → folder “LUXWELD Warranty Archive”.<% if (drive.lastBackup) { %> Last backup <%= drive.lastBackup.slice(0,16).replace('T',' ') %> UTC.<% } %></span>
+        <span class="text-zinc-400">Every record mirrors to <span class="text-zinc-200"><%= drive.email || 'the connected Drive' %></span> → folder “LUXWELD Warranty Archive” — searchable in Drive by serial, installer, site or date. Updates right after each registration + a daily check.<% if (drive.lastBackup) { %> Last full check <%= drive.lastBackup.slice(0,16).replace('T',' ') %> UTC.<% } %></span>
       <% } else if (drive.configured) { %>
         <span class="badge bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30 mr-2">Google Drive OFF</span>
-        <span class="text-zinc-400">Connect the CEO’s Google account once and the archive auto‑uploads to his Drive every day.</span>
+        <span class="text-zinc-400">Connect the CEO’s Google account once — every record then uploads to his Drive automatically, searchable with Drive’s own search bar.</span>
       <% } else { %>
         <span class="badge bg-zinc-500/15 text-zinc-300 ring-1 ring-zinc-500/30 mr-2">Not set up</span>
         <span class="text-zinc-400">Add the Google credentials to enable automatic Drive backup (see README → Google Drive backup).</span>
