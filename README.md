@@ -90,9 +90,15 @@ plus production users `mike`/`mike123`, `sara`/`sara123` for local testing.
 
 ## Google Drive backup (automatic, admin-only)
 
-Uploads the full archive (all info + photos, zipped) to the admin's Google Drive
-every day, into a **“LUXWELD Warranty Archive”** folder. Reuses the same Google
-credentials as login, plus one extra redirect URI.
+Mirrors **every record into the admin's Google Drive as its own searchable
+folder** (photos with readable names + `record.txt` + `info.json`, plus an
+updated-in-place SQLite snapshot), inside a **“LUXWELD Warranty Archive”**
+folder. Folder names carry serial · tag · production/installation dates ·
+installer · site, so Drive's own search bar finds any record — and Drive
+full-text-indexes `record.txt`, so *every* detail is searchable. Sync is
+incremental (per-record content hash): records push to Drive seconds after
+each registration/edit, with a daily full check as the safety net. Reuses the
+same Google credentials as login, plus one extra redirect URI.
 
 1. Create the Google OAuth client as above (or reuse the login one). On the
    **OAuth consent screen**, set publishing status to **In production** and add
@@ -101,9 +107,11 @@ credentials as login, plus one extra redirect URI.
 2. Add an **Authorised redirect URI**: `https://warranty.luxweld.com.au/admin/drive/callback`.
 3. Set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (+ `BASE_URL`) in Railway.
 4. In the app: **Archive → Connect Google Drive**, sign in as the CEO, approve.
-5. Click **Back up now** to confirm a zip lands in his Drive; after that it runs
-   **daily automatically**. The panel shows the last run + any error (no silent
-   failures).
+   The first full upload starts automatically.
+5. Check his Drive for the record folders (or click **Back up now** to force a
+   verify-everything pass). The panel shows the last run + any error (no silent
+   failures). For the physical-drive relay via Google Drive for desktop, see
+   `BACKUP-AND-RECOVERY.md`.
 
 ## Apple OAuth setup (optional)
 
