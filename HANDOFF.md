@@ -166,19 +166,25 @@ Optional: `ADMIN_EMAILS`, `PRODUCTION_EMAILS`, `GOOGLE_CLIENT_ID`,
 self-describing storage · `b68c59f` real auth (Google/Apple + 4 roles) ·
 `0c35822` Railway-ready.
 
-## Deploy-crash emails — root cause & fix (2026-07-10)
+## Deploy-crash emails — CONFIRMED root cause & fix (2026-07-10)
 Flynn's "deployment crashed / site is down" emails on every work session were
 NOT credit/billing (usage $1.57, over-limit no) and NOT a steady-state crash
-(deploys run SUCCESS/healthy). Cause: the app had **no SIGTERM handler**, so on
-each redeploy Railway's stop of the old container killed Node ungracefully →
-platform logged a CRASH → alert email (observed the prior deploy flip to CRASHED
-during a transition). Fix (commit `4238698`): graceful shutdown in `server.js`
-(close server, `wal_checkpoint(TRUNCATE)`, `db.close()`, `exit(0)`, 8s force-exit
-guard) + an `unhandledRejection` logger so best-effort Drive/cloud rejections
-can't crash the site. Verified: in-process SIGTERM → clean exit 0. NOTE: volume
-services still can't overlap, so every deploy has a ~30–60s gap (inherent) — the
-fix removes the *crash email*, not the brief gap. Real-world confirmation lands
-on the next legitimate deploy (old container now exits cleanly).
+(deploys run SUCCESS/healthy). **True root cause (found via the superseded
+deploy's logs: `npm error signal SIGTERM`):** the container started via
+`npm start`, so **npm was PID 1**. On redeploy Railway's SIGTERM hit npm, which
+exits with an error WITHOUT cleanly forwarding the signal to Node — so the
+graceful handler never ran and Railway logged the old container as CRASHED →
+alert email. The graceful-shutdown handler (commit `4238698`) was necessary but
+not sufficient on its own because npm swallowed the signal.
+**Fix (commit `aa5adf0`):** `railway.json` `startCommand` →
+`node --env-file-if-exists=.env src/server.js` (Node is now PID 1 and receives
+SIGTERM directly) + hardened handler (`closeIdleConnections()` immediately,
+`closeAllConnections()` after 300ms, 2.5s hard-exit cap) so it exits(0) inside
+the SIGKILL window. **PROVEN in production** via a controlled `railway redeploy`:
+the outgoing node-direct container logged "Received SIGTERM → Clean shutdown
+complete" and its deployment status was **REMOVED (clean), not CRASHED**. NOTE:
+volume services still can't overlap, so every deploy has a ~30–60s unavailability
+gap (inherent on any plan) — the fix removes the *crash email*, not the brief gap.
 
 ## Railway access & config state (2026-07-09)
 Railway CLI installed + logged in as `flynn.anderson3695@gmail.com` on Flynn's
