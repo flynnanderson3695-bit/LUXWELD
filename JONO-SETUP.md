@@ -6,9 +6,29 @@ them top to bottom. Each step says what to click and how you'll know it worked.
 
 Everything here is a one-time setup. After this, backups run on their own.
 
+**Order matters:** do Step 1 before Step 2.
+
 ---
 
-## ✅ Step 1 — Turn on the automatic Google Drive backup  (~2 minutes)
+## ✅ Step 1 — Create the Google connection  (~15 minutes, one time)
+
+This is the only technical bit. It sets up the secure link that lets the website
+save into your Google Drive.
+
+👉 **Follow the separate guide: `GOOGLE-DRIVE-SETUP.md`.** It's click-by-click.
+At the end you'll copy **two codes** and send them to **Flynn** — he plugs them
+in safely, so you never touch the website's settings.
+
+*(This is the fiddliest step. If a screen looks different or you're unsure,
+screenshot it and send it to Flynn — you can't break anything.)*
+
+**You know it's done when:** Flynn confirms he's added your two codes, and the
+**Google Drive** box on the Archive page changes from "Not set up" to a
+**Connect Google Drive** button.
+
+---
+
+## ✅ Step 2 — Turn on the automatic backup  (~2 minutes)
 
 This makes a copy of every warranty record (all photos + details) land in **your
 Google Drive**, automatically, forever.
@@ -36,7 +56,7 @@ The matching folder appears with all its photos and details inside.
 
 ---
 
-## ✅ Step 2 — Upgrade Railway so the site can't switch off  (do this WITH Flynn)
+## ✅ Step 3 — Upgrade Railway so the site can't switch off  (do this WITH Flynn)
 
 The website currently runs on a free trial that can shut it off. Upgrading keeps
 it on 24/7. Flynn will sit with you for this — it's a 2-minute payment step.
@@ -50,7 +70,7 @@ your call on the plan.)*
 
 ---
 
-## ✅ Step 3 — Set up the always-on backup computer + big hard drive  (~10 minutes)
+## ✅ Step 4 — Set up the always-on backup computer + big hard drive  (~10 minutes)
 
 This is your **physical** backup: a computer left on that copies everything from
 your Google Drive down onto the big external drive, automatically.
@@ -59,7 +79,7 @@ On the computer you'll leave running (with the 10 TB drive plugged in):
 
 1. Plug in the external hard drive.
 2. Go to **google.com/drive/download** and install **Google Drive for desktop**.
-3. Open it and **sign in with the same Google account** you used in Step 1.
+3. Open it and **sign in with the same Google account** your backups go to.
 4. Click the **gear (Settings) → Preferences → Google Drive**, and choose
    **Mirror files** (this keeps a real full copy on the drive, not just links).
 5. When asked where to keep the files (or under **Advanced settings**), pick the
@@ -73,7 +93,7 @@ it's ever off for a while it's fine — it catches up as soon as it's back on.
 
 ---
 
-## ✅ Step 4 (optional) — A stronger password
+## ✅ Step 5 (optional) — A stronger password
 
 Your admin login opens everything, so a longer password is much safer than a
 short number. If you'd like to change it:
@@ -85,6 +105,6 @@ short number. If you'd like to change it:
 ---
 
 ### That's it
-Once Steps 1–3 are done, your warranty data lives in **three** places at once —
+Once Steps 1, 2 and 4 are done, your warranty data lives in **three** places at once —
 the live site, your Google Drive, and your physical hard drive — all kept up to
 date automatically. Full details for Flynn are in `BACKUP-AND-RECOVERY.md`.
