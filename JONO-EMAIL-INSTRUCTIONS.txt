@@ -1,0 +1,137 @@
+Subject: LUXWELD warranty backups - your setup steps
+
+Hi Jono,
+
+Here's the full setup for the warranty backups. When it's done, every warranty
+record (all photos and details) copies automatically to your Google Drive AND to
+a hard drive - with nothing to remember day to day.
+
+It's a mix of a few things you do, plus two quick bits Flynn does in between.
+Just go in order and pause where it says WAIT.
+
+
+THE PLAN AT A GLANCE
+--------------------
+1. YOU:  Set up the Google connection (~15 min, best on a laptop/desktop). = PART 1 below
+2. YOU:  Send Flynn the two codes you get at the end of Part 1.
+3. WAIT: Flynn switches the connection on (a few minutes) and tells you it's ready.
+4. YOU:  Turn on the backup with one click on the website. = PART 2 below
+5. YOU + FLYNN: A 2-minute step together to keep the site on 24/7 (Flynn leads this;
+        it needs your card - nothing to prepare).
+6. YOU:  Set up the always-on backup computer + hard drive (~10 min). = PART 3 below
+7. YOU (optional): Set a stronger password. = PART 4 below
+
+You can start PART 1 right now, on your own computer, signed in to the LUXWELD
+Google account. (A laptop or desktop is much easier than a phone for this.)
+
+If any screen looks different from these notes (Google changes their layout
+sometimes), don't guess - take a screenshot and send it to Flynn. Nothing here
+can break the website.
+
+
+==================================================
+PART 1 - Set up the Google connection  (~15 minutes)
+==================================================
+
+A. Create a project
+   1. Go to  console.cloud.google.com  and sign in with the LUXWELD Google account.
+   2. If it asks about terms of service, tick agree and continue.
+   3. At the very top, click the project dropdown (may say "Select a project"),
+      then click New Project (top right).
+   4. Name: type  LUXWELD Warranty . Leave the rest as-is. Click Create.
+   5. Wait a few seconds, then make sure the top dropdown shows LUXWELD Warranty
+      (select it if not).
+
+B. Turn on Google Drive
+   1. In the search bar at the top, type:  Google Drive API   then press Enter.
+   2. Click the result "Google Drive API".
+   3. Click the blue Enable button and wait for it to finish.
+
+C. Set up and PUBLISH the consent screen   (don't skip step 5!)
+   1. In the top search bar, type:  OAuth consent screen   and open it.
+      (On newer layouts it's under "Google Auth Platform" > Branding / Audience.)
+   2. If asked "User Type", choose External, then Create.
+   3. Fill only the required fields (marked with a red star):
+        - App name: LUXWELD Warranty
+        - User support email: pick your email
+        - Developer contact: your email again
+      Then click Save and Continue through the next pages (nothing to add there).
+   4. Find the "Audience" (or "Publishing status") page.
+   5. Under Publishing status it likely says "Testing". Click Publish app, then
+      Confirm. It should now say "In production".
+      ^ This one matters - if you skip it, the backup stops working after 7 days.
+
+D. Create the connection
+   1. In the top search bar, type:  Credentials   and open it
+      (APIs & Services > Credentials).
+   2. Click "+ Create Credentials", then "OAuth client ID".
+   3. Application type: choose Web application.
+   4. Name: LUXWELD Warranty website  (any name is fine).
+   5. Scroll to "Authorised redirect URIs", click "+ Add URI", and paste this
+      EXACTLY:
+
+          https://warranty.luxweld.com.au/admin/drive/callback
+
+   6. Click "+ Add URI" again and paste this second one too:
+
+          https://warranty.luxweld.com.au/auth/google/callback
+
+   7. Click Create.
+
+E. Copy the two codes
+   A window titled "OAuth client created" pops up with:
+        - Client ID     (a long code ending in .apps.googleusercontent.com)
+        - Client secret (a shorter code starting with GOCSPX-)
+   Copy BOTH (there are copy buttons) and send them to Flynn, like you would a
+   password - don't post them anywhere public. If the window closed, reopen it
+   from Credentials > click your client name > the codes are on the right.
+
+   >>> Now send Flynn the two codes, and WAIT for him to say it's ready. <<<
+
+
+==================================================
+PART 2 - Turn on the backup  (~2 min, AFTER Flynn says ready)
+==================================================
+   1. Go to  warranty.luxweld.com.au  and log in
+      (email jono@luxweld.com.au; if unsure of the password, ask Flynn to reset it).
+   2. Click Archive in the top menu.
+   3. Find the "Google Drive backup" box near the top and click Connect Google Drive.
+   4. Sign in with your Google account and click Allow / Continue.
+   5. You'll come back to the Archive page and it'll say the first backup is uploading.
+
+   Done right: open drive.google.com and within a few minutes you'll see a folder
+   "LUXWELD Warranty Archive" filling up with a folder for each flashing. To find
+   any record later, just type a serial number, installer name, site, or date into
+   the Google Drive search bar.
+
+
+==================================================
+PART 3 - Always-on backup computer + hard drive  (~10 min)
+==================================================
+   Do this on the computer you'll leave switched on, with the 10 TB drive plugged in.
+   1. Plug in the external hard drive.
+   2. Go to  google.com/drive/download  and install "Google Drive for desktop".
+   3. Open it and sign in with the same Google account your backups go to.
+   4. Click the gear (Settings) > Preferences > Google Drive, and choose
+      "Mirror files" (keeps a real full copy on the drive, not just links).
+   5. When asked where to keep the files (or under Advanced settings), pick the
+      external hard drive (for example  E:\LUXWELD Backup ). This same menu is
+      where you'd change the drive later.
+   6. Let it finish the first copy, then open the drive and check the
+      "LUXWELD Warranty Archive" folder is there with photos inside.
+
+   Keep this computer switched on (turn off "sleep" in the power settings). If it's
+   ever off for a while it's fine - it catches up as soon as it's back on.
+
+
+==================================================
+PART 4 (optional) - Stronger password
+==================================================
+   Your admin login opens everything, so a longer password is safer than a short
+   number. To change it: log in, click Users (top menu), and on your own account
+   set a new password (a short phrase plus a number and symbol is ideal).
+
+
+That's it. Once Parts 1, 2 and 3 are done, your warranty data lives in THREE
+places at once - the live website, your Google Drive, and your physical hard
+drive - all kept up to date automatically.
