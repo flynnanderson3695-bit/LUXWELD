@@ -141,9 +141,37 @@ async function maintenanceTick() {
   }
 }
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`LUXWELD Warranty running at http://localhost:${PORT}`);
   rebuildArchiveSite(); // local copy on boot (no upload)
   setTimeout(maintenanceTick, 60 * 1000).unref(); // catch-up pass shortly after boot
   setInterval(maintenanceTick, 60 * 60 * 1000).unref(); // then hourly
+});
+
+// ---- Graceful shutdown (stops the "deployment crashed" emails) ----
+// On every redeploy Railway stops the old container with SIGTERM. With no
+// handler, Node is killed mid-flight and the platform records a CRASH (→ alert
+// email), even though nothing is wrong. Here we stop accepting connections,
+// flush SQLite's WAL into the volume file, close cleanly, and exit(0) so the
+// platform sees a normal stop. A short timer force-exits if a connection hangs.
+let shuttingDown = false;
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`Received ${signal} — shutting down gracefully.`);
+  const done = (code) => {
+    try { db.exec('PRAGMA wal_checkpoint(TRUNCATE);'); db.close(); } catch {}
+    console.log('Clean shutdown complete.');
+    process.exit(code);
+  };
+  server.close(() => done(0));
+  setTimeout(() => done(0), 8000).unref(); // don't let a lingering socket wedge the deploy
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+// A stray rejection from a best-effort background task (Drive/cloud mirror)
+// must never take the whole site down mid-install. Log, don't exit.
+process.on('unhandledRejection', (reason) => {
+  console.warn('Unhandled promise rejection (ignored, site stays up):', reason?.message || reason);
 });
