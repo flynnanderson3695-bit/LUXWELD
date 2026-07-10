@@ -165,7 +165,11 @@ function shutdown(signal) {
     process.exit(code);
   };
   server.close(() => done(0));
-  setTimeout(() => done(0), 8000).unref(); // don't let a lingering socket wedge the deploy
+  // A reverse proxy keeps connections alive; drop them so server.close() resolves
+  // promptly and we exit(0) well within the platform's SIGTERM->SIGKILL window.
+  try { server.closeIdleConnections(); } catch {}
+  setTimeout(() => { try { server.closeAllConnections(); } catch {} }, 300).unref();
+  setTimeout(() => done(0), 2500).unref(); // hard cap so a lingering socket can't wedge the deploy
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
