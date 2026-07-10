@@ -26,7 +26,7 @@ const STYLE = `
 a{color:var(--g);text-decoration:none}a:hover{text-decoration:underline}
 .top{position:sticky;top:0;background:rgba(20,20,23,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--b);padding:14px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;z-index:5}
 .logo{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-weight:900;color:var(--ink);background:linear-gradient(180deg,var(--g),var(--g2))}
-.brand{letter-spacing:.25em;color:var(--g);font-weight:600}
+.brand{font-family:'Michroma',system-ui,sans-serif;letter-spacing:.14em;font-weight:600;background:linear-gradient(90deg,#e8961e,#f4b83e 40%,#f9dc8f 75%,#fdf4dd);-webkit-background-clip:text;background-clip:text;color:transparent}
 .top small{color:var(--m);margin-left:auto}
 .wrap{max-width:1100px;margin:0 auto;padding:20px}
 h1{font-size:22px;margin:6px 0}.sub{color:var(--m);font-size:14px;margin:0 0 16px}
@@ -55,7 +55,10 @@ h1{font-size:22px;margin:6px 0}.sub{color:var(--m);font-size:14px;margin:0 0 16p
 function head(title, builtAt, rel = '') {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)} · LUXWELD Archive</title><link rel="stylesheet" href="${rel}style.css"></head><body>
+<title>${esc(title)} · LUXWELD Archive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="${rel}style.css"></head><body>
 <div class="top"><span class="logo">L</span><span class="brand">LUXWELD</span>
 <span class="pill">Records Archive</span><small>Read-only backup · updated ${esc(builtAt)} UTC</small></div>`;
 }

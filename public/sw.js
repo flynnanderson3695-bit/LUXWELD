@@ -2,7 +2,7 @@
 // It ONLY caches static branding assets (icons + manifest). It never touches
 // navigations, login, forms, QR pages, photo uploads, or any warranty data,
 // so it cannot serve stale private content or break submissions.
-const CACHE = 'luxweld-static-v1';
+const CACHE = 'luxweld-static-v2'; // v2: real logo icons (2026-07-10)
 const ASSETS = [
   '/manifest.webmanifest',
   '/icon-192.png',

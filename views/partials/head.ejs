@@ -15,6 +15,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="LUXWELD" />
 
+  <!-- Brand wordmark font (closest webfont to the LUXWELD logo lettering) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet" />
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -44,6 +49,22 @@
     }
     input, select, textarea { font-size: 16px; } /* avoids iOS zoom-on-focus */
   </style>
+  <style>
+    /* LUXWELD brand lockup — matches the logo: industrial font + gold→white gradient */
+    .brand-font {
+      font-family: 'Michroma', ui-sans-serif, system-ui, sans-serif;
+      letter-spacing: 0.14em;
+    }
+    .brand-word {
+      font-family: 'Michroma', ui-sans-serif, system-ui, sans-serif;
+      letter-spacing: 0.14em;
+      background: linear-gradient(90deg, #e8961e 0%, #f4b83e 40%, #f9dc8f 75%, #fdf4dd 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
   <script>
     // Register the service worker (caches only static branding assets).
     if ('serviceWorker' in navigator) {
@@ -58,12 +79,8 @@
   <header class="bg-ink-800/90 backdrop-blur border-b border-ink-600 sticky top-0 z-20">
     <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
       <a href="/" class="flex items-center gap-2.5 shrink-0">
-        <% if (typeof hasLogo !== 'undefined' && hasLogo) { %>
-          <img src="/luxweld-velux-trusted.svg" alt="LUXWELD" class="h-8 w-auto" />
-        <% } else { %>
-          <span class="inline-grid place-items-center w-8 h-8 rounded-lg bg-gradient-to-b from-gold-400 to-gold-600 text-ink-900 font-black">L</span>
-          <span class="font-semibold tracking-[0.25em] text-gold-300 text-sm">LUXWELD</span>
-        <% } %>
+        <img src="/brand/mark.png" alt="" class="h-8 w-8 rounded-lg border border-ink-600" />
+        <span class="brand-word text-base">LUXWELD</span>
       </a>
       <nav class="flex items-center gap-3 sm:gap-4 flex-wrap justify-end">
         <% if (typeof role !== 'undefined' && role === 'admin') { %>

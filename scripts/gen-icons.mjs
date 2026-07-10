@@ -1,7 +1,13 @@
 // Generates LUXWELD PWA icons (black background, gold "L") as PNGs — no deps.
+// ⚠️ DISABLED (2026-07-10): the live icons are now cropped from the real logo
+// (public/brand/luxweld-logo-full.png). Running this would overwrite them with
+// the old placeholder "L" tiles, so it exits early on purpose.
 import { deflateSync } from 'node:zlib';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+console.error('gen-icons.mjs is disabled: icons now come from public/brand/luxweld-logo-full.png (cropped via a one-off script; see git history).');
+process.exit(1);
 
 const OUT = resolve(import.meta.dirname, '../public');
 const INK = [11, 11, 13];
