@@ -32,12 +32,17 @@ const MIME = {
 };
 
 export function driveStatus() {
+  const folderId = getSetting('drive_folder_id');
   return {
     configured: DRIVE_CONFIGURED,
     connected: Boolean(getSetting('drive_refresh_token')),
     email: getSetting('drive_email'),
     lastBackup: getSetting('drive_last_backup'),
     lastStatus: getSetting('drive_last_status'),
+    folderId,
+    // Direct link to the backup folder. Opens for whoever is signed into the
+    // connected Google account (private to them — not a public share).
+    folderUrl: folderId ? `https://drive.google.com/drive/folders/${folderId}` : null,
   };
 }
 

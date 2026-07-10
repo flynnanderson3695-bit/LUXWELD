@@ -35,7 +35,7 @@
     <div class="text-sm">
       <% if (drive.connected) { %>
         <span class="badge bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30 mr-2">Google Drive backup ON</span>
-        <span class="text-zinc-400">Every record mirrors to <span class="text-zinc-200"><%= drive.email || 'the connected Drive' %></span> → folder “LUXWELD Warranty Archive” — searchable in Drive by serial, installer, site or date. Updates right after each registration + a daily check.<% if (drive.lastBackup) { %> Last full check <%= drive.lastBackup.slice(0,16).replace('T',' ') %> UTC.<% } %></span>
+        <span class="text-zinc-400">Every record mirrors to <span class="text-zinc-200"><%= drive.email || 'the connected Drive' %></span> → folder “LUXWELD Warranty Archive” — searchable in Drive by serial, installer, site or date. Updates right after each registration + a daily check.<% if (drive.lastBackup) { %> Last full check <%= drive.lastBackup.slice(0,16).replace('T',' ') %> UTC.<% } %><% if (drive.folderUrl) { %> <a href="<%= drive.folderUrl %>" target="_blank" rel="noopener" class="text-gold-300 hover:text-gold-200 underline whitespace-nowrap">See your backed-up files ↗</a><% } %></span>
       <% } else if (drive.configured) { %>
         <span class="badge bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30 mr-2">Google Drive OFF</span>
         <span class="text-zinc-400">Connect the CEO’s Google account once — every record then uploads to his Drive automatically, searchable with Drive’s own search bar.</span>
@@ -46,7 +46,8 @@
     </div>
     <div class="flex gap-2 shrink-0">
       <% if (drive.connected) { %>
-        <form method="post" action="/admin/drive/backup-now"><button class="btn-gold !py-2 !px-3 text-sm">Back up now</button></form>
+        <% if (drive.folderUrl) { %><a href="<%= drive.folderUrl %>" target="_blank" rel="noopener" class="btn-gold !py-2 !px-3 text-sm whitespace-nowrap">📂 View backups in Drive ↗</a><% } %>
+        <form method="post" action="/admin/drive/backup-now"><button class="btn-ghost !py-2 !px-3 text-sm">Back up now</button></form>
         <form method="post" action="/admin/drive/disconnect" onsubmit="return confirm('Disconnect Google Drive backup?');"><button class="btn-ghost !py-2 !px-3 text-sm">Disconnect</button></form>
       <% } else if (drive.configured) { %>
         <a href="/admin/drive/connect" class="btn-gold !py-2 !px-3 text-sm">Connect Google Drive</a>
