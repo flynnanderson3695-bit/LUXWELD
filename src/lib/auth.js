@@ -11,7 +11,14 @@ import {
 
 export { hashPassword, verifyPassword, SESSION_SECRET, sessionCookieOptions };
 
-export const ROLES = ['admin', 'production', 'installer', 'pending'];
+export const ROLES = ['genius', 'admin', 'production', 'installer', 'pending'];
+
+// Roles with full, unrestricted access. `genius` is the owner's personal tier —
+// it behaves exactly like admin everywhere access is checked, and sits above it.
+// Keep in sync with: the CHECK constraint in db.js and the admin-only view gates
+// (res.locals.isAdmin in server.js).
+export const SUPERUSER_ROLES = ['admin', 'genius'];
+export const isSuperRole = (role) => SUPERUSER_ROLES.includes(role);
 
 // ---- Lookups ----
 export function getUserById(id) {
@@ -107,12 +114,12 @@ export function currentRole(req) {
 export function hasRole(req, role) {
   const current = currentRole(req);
   if (!current) return false;
-  if (current === 'admin') return true;
+  if (isSuperRole(current)) return true;
   return current === role;
 }
 
 export function roleLanding(role) {
-  if (role === 'admin') return '/admin';
+  if (isSuperRole(role)) return '/admin';
   if (role === 'production') return '/production';
   if (role === 'installer') return '/account';
   return '/pending';
@@ -120,7 +127,7 @@ export function roleLanding(role) {
 
 export function roleCanAccess(role, path) {
   if (!role || !path) return false;
-  if (role === 'admin') return true;
+  if (isSuperRole(role)) return true;
   if (role === 'production') return path === '/production' || path.startsWith('/p/');
   if (role === 'installer') return path === '/account' || path.startsWith('/p/');
   return false;

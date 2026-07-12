@@ -24,7 +24,7 @@ export function tx(fn) {
   }
 }
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 // Small key/value store (Drive connection tokens, etc.). Created via
 // CREATE TABLE IF NOT EXISTS so it needs no schema-version bump.
@@ -105,7 +105,7 @@ function createUsersTable() {
       username TEXT UNIQUE,
       email TEXT,
       role TEXT NOT NULL DEFAULT 'pending'
-        CHECK (role IN ('admin','production','installer','pending')),
+        CHECK (role IN ('genius','admin','production','installer','pending')),
       password_hash TEXT,
       provider TEXT NOT NULL DEFAULT 'local',
       provider_id TEXT,
@@ -258,6 +258,37 @@ function migrateV3toV4() {
   db.exec('PRAGMA foreign_keys = ON;');
 }
 
+// v4 -> v5: widen the users.role CHECK constraint to include 'genius' (the owner's
+// top-tier role). SQLite can't ALTER a CHECK, so recreate the table. All columns
+// AND rows (including the seeded admin, with its password_hash) are preserved.
+function migrateV4toV5() {
+  db.exec('PRAGMA foreign_keys = OFF;');
+  db.exec('BEGIN');
+  try {
+    db.exec('ALTER TABLE users RENAME TO users_old;');
+    // Named indexes follow the table on rename; drop them so createUsersTable()
+    // can recreate them on the new table instead of silently skipping (IF NOT EXISTS).
+    db.exec('DROP INDEX IF EXISTS idx_users_provider;');
+    db.exec('DROP INDEX IF EXISTS idx_users_email;');
+    createUsersTable();
+    db.exec(`
+      INSERT INTO users
+        (id, name, username, email, role, password_hash, provider, provider_id, phone, company, active, created_at)
+      SELECT
+        id, name, username, email, role, password_hash, provider, provider_id, phone, company, active, created_at
+      FROM users_old;
+    `);
+    db.exec('DROP TABLE users_old;');
+    db.exec('PRAGMA user_version = 5;');
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    db.exec('PRAGMA foreign_keys = ON;');
+    throw e;
+  }
+  db.exec('PRAGMA foreign_keys = ON;');
+}
+
 function seedUsers() {
   const count = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
   if (count > 0) return;
@@ -337,6 +368,7 @@ if (freshDb) {
     if (version < 2) { migrateLegacyToV2(); version = 2; }
     if (version < 3) { migrateV2toV3(); version = 3; }
     if (version < 4) { migrateV3toV4(); version = 4; }
+    if (version < 5) { migrateV4toV5(); version = 5; }
     console.log('Migration complete. Existing records preserved.');
   }
 }

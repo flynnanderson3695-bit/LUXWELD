@@ -94,7 +94,26 @@ async function run() {
 
   // 5c. role gating: production blocked from admin, admin manages users
   ok('production blocked from /admin (403)', (await fetch(`${BASE}/admin`, { headers: { cookie: prod.cookie }, redirect: 'manual' })).status === 403);
-  ok('admin users page 200', (await fetch(`${BASE}/admin/users`, { headers: { cookie: admin.cookie } })).status === 200);
+  const usersPage = await (await fetch(`${BASE}/admin/users`, { headers: { cookie: admin.cookie } })).text();
+  ok('admin users page 200', usersPage.length > 0);
+
+  // 5d. "genius" role: full access (top tier), and the CHECK constraint accepts it.
+  ok('users page offers the genius role', /value="genius"/.test(usersPage));
+  const mkGenius = await fetch(`${BASE}/admin/users`, {
+    method: 'POST', headers: { cookie: admin.cookie, 'content-type': 'application/x-www-form-urlencoded' },
+    redirect: 'manual',
+    body: new URLSearchParams({ name: 'Flynn', email: 'flynn@luxweld.local', password: 'genius123', role: 'genius' }),
+  });
+  ok('create genius account → saved (role stored, no CHECK violation)',
+    mkGenius.status === 302 && /saved=1/.test(mkGenius.headers.get('location') || ''),
+    `${mkGenius.status} ${mkGenius.headers.get('location')}`);
+  const genius = await login('flynn@luxweld.local', 'genius123');
+  ok('genius login → lands on /admin', genius.status === 302 && genius.location.endsWith('/admin'), `${genius.status} ${genius.location}`);
+  ok('genius reaches admin dashboard (200)', (await fetch(`${BASE}/admin`, { headers: { cookie: genius.cookie } })).status === 200);
+  ok('genius reaches admin users (200)', (await fetch(`${BASE}/admin/users`, { headers: { cookie: genius.cookie } })).status === 200);
+  ok('genius reaches admin archive (200)', (await fetch(`${BASE}/admin/archive`, { headers: { cookie: genius.cookie } })).status === 200);
+  const geniusNav = await (await fetch(`${BASE}/admin`, { headers: { cookie: genius.cookie } })).text();
+  ok('genius sees the admin nav (Users link rendered)', /href="\/admin\/users"/.test(geniusNav));
 
   // generate 1 product
   const gen = await fetch(`${BASE}/admin/generate`, {

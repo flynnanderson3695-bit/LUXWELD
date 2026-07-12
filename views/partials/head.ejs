@@ -83,13 +83,13 @@
         <span class="brand-word text-base">LUXWELD</span>
       </a>
       <nav class="flex items-center gap-3 sm:gap-4 flex-wrap justify-end">
-        <% if (typeof role !== 'undefined' && role === 'admin') { %>
+        <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
           <a href="/admin" class="navlink">Dashboard</a>
           <a href="/admin/archive" class="navlink">Archive</a>
           <a href="/admin/generate" class="navlink">Generate QR</a>
           <a href="/admin/users" class="navlink">Users</a>
         <% } %>
-        <% if (typeof role !== 'undefined' && (role === 'production' || role === 'admin')) { %>
+        <% if (typeof isAdmin !== 'undefined' && (isAdmin || role === 'production')) { %>
           <a href="/production" class="navlink">Production</a>
         <% } %>
         <% if (typeof role !== 'undefined' && role === 'installer') { %>

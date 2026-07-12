@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { db } from './db.js'; // initialise schema on boot
-import { currentUser, roleLanding } from './lib/auth.js';
+import { currentUser, roleLanding, isSuperRole } from './lib/auth.js';
 import { SESSION_SECRET, IS_PROD, PORT, DB_PATH, UPLOAD_ROOT, STORAGE_PERSISTENT } from './lib/config.js';
 import passport, { googleEnabled, appleEnabled } from './lib/passport.js';
 import { statusBadgeClass } from './lib/warranty.js';
@@ -76,6 +76,8 @@ app.use((req, res, next) => {
   const user = currentUser(req);
   res.locals.user = user;
   res.locals.role = user?.role || null;
+  // Admin-level access for view gates (nav, admin-only links). True for `genius` too.
+  res.locals.isAdmin = isSuperRole(user?.role);
   res.locals.userName = user?.name || null;
   res.locals.path = req.path;
   res.locals.statusBadgeClass = statusBadgeClass;

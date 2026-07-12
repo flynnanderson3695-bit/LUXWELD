@@ -63,7 +63,7 @@
     </div>
   </div>
 
-  <% if (role === 'admin') { %>
+  <% if (isAdmin) { %>
     <a href="/admin/products/<%= product.serial %>" class="block text-center text-sm text-gold-300 mt-4">View admin record →</a>
   <% } %>
 </div>
