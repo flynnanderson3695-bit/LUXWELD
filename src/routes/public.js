@@ -37,9 +37,6 @@ const upload = multer({
 
 const router = Router();
 
-// Optional companion-app landing page.
-router.get('/app', (req, res) => res.render('app-landing'));
-
 // Alias so /install/:serial also works (QR codes use /p/:serial).
 router.get('/install/:serial', (req, res) => res.redirect(`/p/${req.params.serial}`));
 

@@ -228,12 +228,13 @@ async function run() {
   const sbuf = Buffer.from(await site.arrayBuffer());
   ok('archive-site.zip download is a zip', site.status === 200 && sbuf.slice(0, 2).toString() === 'PK');
 
-  // --- Cloud / PWA / app endpoints ---
+  // --- Cloud / PWA endpoints ---
   const health = await fetch(`${BASE}/health`);
   ok('/health returns ok', health.status === 200 && /"status":"ok"/.test(await health.text()));
 
-  const appPage = await fetch(`${BASE}/app`);
-  ok('/app landing renders', appPage.status === 200 && /optional/i.test(await appPage.text()));
+  // The companion-app landing page was removed (no mobile app) — /app must 404.
+  const appPage = await fetch(`${BASE}/app`, { redirect: 'manual' });
+  ok('/app landing removed (404)', appPage.status === 404, String(appPage.status));
 
   const alias = await fetch(`${BASE}/install/${serial}`, { redirect: 'manual' });
   ok('/install/:serial redirects to /p/:serial', alias.status === 302 && (alias.headers.get('location') || '').endsWith(`/p/${serial}`));
@@ -252,7 +253,8 @@ async function run() {
     return (await fetch(`${BASE}/p/${s2}/install`)).text();
   })();
   ok('install form has Remember-my-details', /Remember my details/i.test(freshForm));
-  ok('install form has app CTA', /Get the app/i.test(freshForm) && /Install often/i.test(freshForm));
+  // The "Get the app" callout was removed (no mobile app) — it must not reappear.
+  ok('install form has NO app CTA', !/Get the app/i.test(freshForm) && !/Install often/i.test(freshForm) && !/href="\/app"/.test(freshForm));
   ok('install form has hidden source field', /name="source"/.test(freshForm));
 }
 
