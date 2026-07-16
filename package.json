@@ -11,7 +11,9 @@
     "start": "node --env-file-if-exists=.env src/server.js",
     "dev": "node --env-file-if-exists=.env --watch src/server.js",
     "seed": "node --env-file-if-exists=.env src/seed.js",
-    "smoke": "node scripts/smoke.mjs",
+    "smoke": "node scripts/migrate-test.mjs && node scripts/smoke.mjs",
+    "smoke:server": "node scripts/smoke.mjs",
+    "test:migrate": "node scripts/migrate-test.mjs",
     "set-app-url": "node scripts/set-app-url.mjs"
   },
   "dependencies": {

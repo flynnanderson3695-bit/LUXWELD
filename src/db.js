@@ -24,7 +24,7 @@ export function tx(fn) {
   }
 }
 
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 // Small key/value store (Drive connection tokens, etc.). Created via
 // CREATE TABLE IF NOT EXISTS so it needs no schema-version bump.
@@ -258,6 +258,14 @@ function migrateV3toV4() {
   db.exec('PRAGMA foreign_keys = ON;');
 }
 
+// ⚠️ SQLite gotcha (learned the hard way — see migrateV5toV6): `ALTER TABLE users
+// RENAME TO users_old` does NOT just rename the table. With legacy_alter_table off
+// (the default), SQLite also REWRITES foreign keys in *other* tables to follow the
+// rename — so `production_registration.production_user_id REFERENCES users(id)`
+// silently became `REFERENCES users_old(id)`, then dangled when users_old was
+// dropped. Never rename a table that has FK children pointing at it; recreate the
+// CHILD table instead (nothing references it, so no rewrite cascade).
+//
 // v4 -> v5: widen the users.role CHECK constraint to include 'genius' (the owner's
 // top-tier role). SQLite can't ALTER a CHECK, so recreate the table. All columns
 // AND rows (including the seeded admin, with its password_hash) are preserved.
@@ -280,6 +288,50 @@ function migrateV4toV5() {
     `);
     db.exec('DROP TABLE users_old;');
     db.exec('PRAGMA user_version = 5;');
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    db.exec('PRAGMA foreign_keys = ON;');
+    throw e;
+  }
+  db.exec('PRAGMA foreign_keys = ON;');
+}
+
+// v5 -> v6: repair the damage migrateV4toV5 did. The users rename left
+// production_registration.production_user_id pointing at a non-existent `users_old`,
+// which made EVERY production registration fail (production.js writes a non-null
+// production_user_id, and foreign_keys is ON). Fix it by recreating the CHILD table
+// with the correct REFERENCES users(id) — renaming the child, not users, so nothing
+// gets rewritten. All existing rows are preserved. Idempotent given user_version.
+function migrateV5toV6() {
+  db.exec('PRAGMA foreign_keys = OFF;');
+  db.exec('BEGIN');
+  try {
+    db.exec('ALTER TABLE production_registration RENAME TO production_registration_fkfix;');
+    db.exec(`
+      CREATE TABLE production_registration (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL UNIQUE REFERENCES product(id) ON DELETE CASCADE,
+        product_tag TEXT,
+        custom_description TEXT,
+        production_date TEXT NOT NULL,
+        production_user_id INTEGER REFERENCES users(id),
+        team_member_name TEXT,
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+    db.exec(`
+      INSERT INTO production_registration
+        (id, product_id, product_tag, custom_description, production_date,
+         production_user_id, team_member_name, notes, created_at)
+      SELECT
+        id, product_id, product_tag, custom_description, production_date,
+        production_user_id, team_member_name, notes, created_at
+      FROM production_registration_fkfix;
+    `);
+    db.exec('DROP TABLE production_registration_fkfix;');
+    db.exec('PRAGMA user_version = 6;');
     db.exec('COMMIT');
   } catch (e) {
     db.exec('ROLLBACK');
@@ -369,6 +421,7 @@ if (freshDb) {
     if (version < 3) { migrateV2toV3(); version = 3; }
     if (version < 4) { migrateV3toV4(); version = 4; }
     if (version < 5) { migrateV4toV5(); version = 5; }
+    if (version < 6) { migrateV5toV6(); version = 6; }
     console.log('Migration complete. Existing records preserved.');
   }
 }
